@@ -5,64 +5,120 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /**
- * Builds a rough "lunge" silhouette out of layered ellipses (head, torso,
- * front leg, back leg, arms) sampled into scatter points. This keeps the
- * signature element dependency-free (no external model/asset) while still
- * reading clearly as a body mid-movement, which is the hero's whole thesis:
- * "fitness from home" made literal, not a decorative orb.
+ * Deterministic PRNG (Mulberry32) for pure React 19 rendering
  */
-function buildSilhouettePoints(count: number): Float32Array {
-  type Blob = { cx: number; cy: number; rx: number; ry: number; rot: number };
+function createPRNG(seed: number) {
+  let s = seed >>> 0;
+  return function random() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-  const blobs: Blob[] = [
-    { cx: 0, cy: 1.55, rx: 0.22, ry: 0.26, rot: 0 }, // head
-    { cx: -0.02, cy: 0.9, rx: 0.34, ry: 0.55, rot: 0.05 }, // torso
-    { cx: -0.55, cy: 1.05, rx: 0.14, ry: 0.42, rot: -0.9 }, // back arm (raised)
-    { cx: 0.5, cy: 0.55, rx: 0.13, ry: 0.4, rot: 0.7 }, // front arm (forward)
-    { cx: -0.35, cy: 0.05, rx: 0.18, ry: 0.55, rot: -0.35 }, // back thigh
-    { cx: -0.62, cy: -0.75, rx: 0.13, ry: 0.5, rot: -0.15 }, // back shin
-    { cx: 0.42, cy: -0.1, rx: 0.2, ry: 0.55, rot: 0.25 }, // front thigh
-    { cx: 0.62, cy: -0.95, rx: 0.14, ry: 0.5, rot: 0.05 }, // front shin
+type MuscleSegment = {
+  cx: number;
+  cy: number;
+  cz?: number;
+  rx: number;
+  ry: number;
+  rz?: number;
+  rot?: number;
+  weight?: number;
+};
+
+/**
+ * Builds a realistic, massive 3D bodybuilder particle silhouette holding heavy dumbbells
+ * with realistic hands, feet, quad stance, and chest/lat definition.
+ */
+function buildBodybuilderLifterPoints(count: number, random: () => number): Float32Array {
+  const segments: MuscleSegment[] = [
+    // --- HEAD & TRAPS ---
+    { cx: 0, cy: 1.35, rx: 0.16, ry: 0.2, rz: 0.16, weight: 1.2 },    // Head
+    { cx: 0, cy: 1.15, rx: 0.48, ry: 0.14, rz: 0.2, weight: 1.5 },   // Trapezius / Neck
+
+    // --- MASSIVE SHOULDERS ---
+    { cx: -0.62, cy: 1.05, rx: 0.24, ry: 0.24, rz: 0.22, weight: 2.2 },  // Left Deltoid Shoulder
+    { cx: 0.62, cy: 1.05, rx: 0.24, ry: 0.24, rz: 0.22, weight: 2.2 },   // Right Deltoid Shoulder
+
+    // --- FLEXED BICEPS & HANDS HOLDING HEAVY DUMBBELLS ---
+    { cx: -0.82, cy: 0.82, rx: 0.22, ry: 0.32, rz: 0.22, rot: -0.5, weight: 2.5 }, // Left Flexed Bicep
+    { cx: -0.68, cy: 0.52, rx: 0.16, ry: 0.26, rz: 0.18, rot: 0.4, weight: 2.0 },  // Left Forearm & Hand
+    { cx: -0.68, cy: 0.48, rx: 0.24, ry: 0.12, rz: 0.18, weight: 2.2 },            // Left Heavy Dumbbell Weight
+
+    { cx: 0.82, cy: 0.82, rx: 0.22, ry: 0.32, rz: 0.22, rot: 0.5, weight: 2.5 },  // Right Flexed Bicep
+    { cx: 0.68, cy: 0.52, rx: 0.16, ry: 0.26, rz: 0.18, rot: -0.4, weight: 2.0 }, // Right Forearm & Hand
+    { cx: 0.68, cy: 0.48, rx: 0.24, ry: 0.12, rz: 0.18, weight: 2.2 },           // Right Heavy Dumbbell Weight
+
+    // --- V-TAPER CHEST, LATS & 6-PACK ABS ---
+    { cx: 0, cy: 0.92, rx: 0.52, ry: 0.28, rz: 0.26, weight: 3.0 },   // Massive Pectoral Chest
+    { cx: 0, cy: 0.75, rx: 0.58, ry: 0.32, rz: 0.28, weight: 2.8 },   // Wide V-Taper Lats
+    { cx: 0, cy: 0.38, rx: 0.34, ry: 0.34, rz: 0.22, weight: 2.2 },   // 6-Pack Abs / Core
+
+    // --- PELVIS & POWERFUL QUADS ---
+    { cx: 0, cy: 0.05, rx: 0.28, ry: 0.15, rz: 0.2, weight: 1.4 },    // Waist / Pelvis
+    { cx: -0.32, cy: -0.28, rx: 0.24, ry: 0.44, rz: 0.24, rot: -0.12, weight: 2.2 }, // Left Quad Thigh
+    { cx: -0.38, cy: -0.78, rx: 0.16, ry: 0.38, rz: 0.18, rot: -0.04, weight: 1.8 }, // Left Calf
+    { cx: -0.4, cy: -1.02, rx: 0.14, ry: 0.08, rz: 0.26, weight: 1.4 },             // Left Foot / Shoe
+
+    { cx: 0.32, cy: -0.28, rx: 0.24, ry: 0.44, rz: 0.24, rot: 0.12, weight: 2.2 },  // Right Quad Thigh
+    { cx: 0.38, cy: -0.78, rx: 0.16, ry: 0.38, rz: 0.18, rot: 0.04, weight: 1.8 },  // Right Calf
+    { cx: 0.4, cy: -1.02, rx: 0.14, ry: 0.08, rz: 0.26, weight: 1.4 },              // Right Foot / Shoe
   ];
 
+  const totalWeight = segments.reduce((sum, s) => sum + (s.weight || 1), 0);
   const positions = new Float32Array(count * 3);
+
   let i = 0;
   while (i < count) {
-    const blob = blobs[Math.floor(Math.random() * blobs.length)];
-    // sample a unit disk, then stretch/rotate/translate into the blob
-    const angle = Math.random() * Math.PI * 2;
-    const radius = Math.sqrt(Math.random());
-    let x = Math.cos(angle) * radius * blob.rx;
-    let y = Math.sin(angle) * radius * blob.ry;
+    let r = random() * totalWeight;
+    let seg = segments[0];
+    for (const s of segments) {
+      r -= s.weight || 1;
+      if (r <= 0) {
+        seg = s;
+        break;
+      }
+    }
 
-    const cosR = Math.cos(blob.rot);
-    const sinR = Math.sin(blob.rot);
-    const rx = x * cosR - y * sinR;
-    const ry = x * sinR + y * cosR;
+    const angle = random() * Math.PI * 2;
+    const radius = Math.sqrt(random());
+    let x = Math.cos(angle) * radius * seg.rx;
+    let y = Math.sin(angle) * radius * seg.ry;
+    const z = (random() - 0.5) * (seg.rz || 0.22);
 
-    x = rx + blob.cx;
-    y = ry + blob.cy;
-    const z = (Math.random() - 0.5) * 0.25;
+    if (seg.rot) {
+      const cosR = Math.cos(seg.rot);
+      const sinR = Math.sin(seg.rot);
+      const rx = x * cosR - y * sinR;
+      const ry = x * sinR + y * cosR;
+      x = rx;
+      y = ry;
+    }
 
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = y;
-    positions[i * 3 + 2] = z;
+    positions[i * 3] = x + seg.cx;
+    positions[i * 3 + 1] = y + seg.cy;
+    positions[i * 3 + 2] = z + (seg.cz || 0);
+
     i++;
   }
+
   return positions;
 }
 
-function Silhouette({ density }: { density: number }) {
+function Silhouette({ density, color }: { density: number; color: string }) {
   const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.PointsMaterial>(null);
 
   const { target, scatterOffsets } = useMemo(() => {
-    const target = buildSilhouettePoints(density);
+    const prng = createPRNG(density ^ 777);
+    const target = buildBodybuilderLifterPoints(density, prng);
     const scatterOffsets = new Float32Array(density * 3);
     for (let i = 0; i < density; i++) {
-      scatterOffsets[i * 3] = (Math.random() - 0.5) * 6;
-      scatterOffsets[i * 3 + 1] = (Math.random() - 0.5) * 6;
-      scatterOffsets[i * 3 + 2] = (Math.random() - 0.5) * 3;
+      scatterOffsets[i * 3] = (prng() - 0.5) * 5.0;
+      scatterOffsets[i * 3 + 1] = (prng() - 0.5) * 5.0;
+      scatterOffsets[i * 3 + 2] = (prng() - 0.5) * 2.5;
     }
     return { target, scatterOffsets };
   }, [density]);
@@ -71,10 +127,11 @@ function Silhouette({ density }: { density: number }) {
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    // assemble over the first ~2.5s, then breathe gently forever after
-    const assemble = Math.min(1, t / 2.5);
+    
+    // Smooth particle assembly (1.8s)
+    const assemble = Math.min(1, t / 1.8);
     const eased = 1 - Math.pow(1 - assemble, 3);
-    const breathe = Math.sin(t * 1.2) * 0.015;
+    const breathe = Math.sin(t * 1.2) * 0.012;
 
     const posAttr = pointsRef.current?.geometry.attributes.position as
       | THREE.BufferAttribute
@@ -100,10 +157,11 @@ function Silhouette({ density }: { density: number }) {
     posAttr.needsUpdate = true;
 
     if (pointsRef.current) {
-      pointsRef.current.rotation.y = Math.sin(t * 0.15) * 0.25;
+      // Gentle 3D ambient rotation
+      pointsRef.current.rotation.y = Math.sin(t * 0.2) * 0.2;
     }
     if (materialRef.current) {
-      materialRef.current.opacity = 0.35 + eased * 0.65;
+      materialRef.current.opacity = eased * 0.55;
     }
   });
 
@@ -117,8 +175,8 @@ function Silhouette({ density }: { density: number }) {
       </bufferGeometry>
       <pointsMaterial
         ref={materialRef}
-        size={0.032}
-        color="#ff4d2e"
+        size={0.028}
+        color={color}
         transparent
         opacity={0}
         sizeAttenuation
@@ -129,17 +187,23 @@ function Silhouette({ density }: { density: number }) {
 }
 
 /**
- * The scene itself. Density is passed in from the wrapper so mobile gets a
- * meaningfully lighter particle count (perf + LCP), not just a resized canvas.
+ * Particle silhouette of a lifter. Drawn in the page's own text colour so it
+ * reads as a mark rather than an illustration, and flips with the theme.
  */
-export default function ParticleHero({ density }: { density: number }) {
+export default function ParticleHero({
+  density,
+  color,
+}: {
+  density: number;
+  color: string;
+}) {
   return (
     <Canvas
-      camera={{ position: [0, 0.6, 4.2], fov: 42 }}
+      camera={{ position: [0, 0.1, 4.4], fov: 45 }}
       dpr={[1, 1.75]}
       gl={{ antialias: true, alpha: true }}
     >
-      <Silhouette density={density} />
+      <Silhouette density={density} color={color} />
     </Canvas>
   );
 }

@@ -1,153 +1,169 @@
 "use client";
 
-import { useState } from "react";
-import InvertedCorner from "./InvertedCorner";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
-  { href: "#classes", label: "Classes" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#contact", label: "Contact" },
+  { href: "/#features", label: "Features" },
+  { href: "/#classes", label: "Classes" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#contact", label: "Contact" },
 ];
 
+const SECTION_IDS = ["features", "classes", "how-it-works", "pricing", "contact"];
+
+/**
+ * Floating pill header — three islands over the page rather than a solid bar.
+ *
+ * The active pill is driven by which section is under the top of the viewport.
+ * The previous version also owned an expanding sub-tab strip wired to the
+ * scroll-stack's internal progress; that coupling is gone. The stack now owns
+ * its own pagination, which is where it belongs.
+ */
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState<string>("");
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY < 120) {
+        setActive("");
+        return;
+      }
+      let current = "";
+      for (const id of SECTION_IDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= 220 && rect.bottom >= 160) {
+          current = `/#${id}`;
+          break;
+        }
+      }
+      setActive(current);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  const go = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    setOpen(false);
+    if (!href.startsWith("/#")) return;
+    const target = document.getElementById(href.slice(2));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const island =
+    "pointer-events-auto rounded-full border border-line bg-paper/75 shadow-[var(--shadow-soft)] backdrop-blur-xl";
 
   return (
-    <header className="w-full">
-      {/* 
-        LEFT LOGO TAB
-        bg-shell (#101012) dark tab.
-        rounded-tl-[32px] sm:rounded-tl-[40px] matches outer container curve perfectly (no white arc leaks!).
-        rounded-br-[28px] sm:rounded-br-[34px] curves into light canvas below.
-      */}
-      <div className="absolute top-0 left-0 z-30 bg-shell text-canvas px-6 sm:px-8 h-16 sm:h-20 flex items-center gap-3.5 rounded-br-[28px] sm:rounded-br-[34px]">
-        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-shell border border-canvas/30 flex items-center justify-center shadow-inner">
-          <span className="h-2.5 w-2.5 rounded-sm bg-accent shadow-[0_0_10px_#ff4d2e]" />
-        </div>
-        <a
-          href="#top"
-          className="font-display text-lg sm:text-xl tracking-wider text-canvas uppercase hover:opacity-90 transition-opacity"
+    <header className="pointer-events-none fixed inset-x-0 top-4 z-50 flex items-center justify-between gap-4 px-4 sm:top-6 sm:px-6 lg:px-8">
+      {/* Wordmark */}
+      <div className={`${island} px-4 py-2 sm:px-5 sm:py-2.5`}>
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          className="display-sm block text-base text-ink transition-opacity hover:opacity-70 sm:text-lg"
         >
-          MASS FITNESS
-        </a>
-        {/* Concave Inverted Corner SVG - Overlaps 1px to eliminate seam lines */}
-        <InvertedCorner
-          dir="top-left"
-          className="absolute top-0 left-[calc(100%-1px)] w-8 h-8 sm:w-9 sm:h-9 text-shell"
-        />
+          Mass Fitness
+        </Link>
       </div>
 
-      {/* 
-        LEFT-ALIGNED FLOATING PILL NAV (Matches FynSec Reference!)
-        Floats over the Light Cream Canvas, right next to the left logo tab.
-      */}
-      <div className="absolute top-3.5 sm:top-5 left-[240px] sm:left-[290px] md:left-[320px] z-30 hidden md:flex items-center">
-        <nav className="flex items-center gap-1.5 rounded-full border border-ink/25 bg-canvas/90 backdrop-blur-md px-5 py-2 sm:px-6 sm:py-2.5 shadow-sm">
-          {LINKS.map((link) => (
-            <a
+      {/* Links */}
+      <nav
+        aria-label="Primary"
+        className={`${island} hidden items-center gap-1 p-1.5 md:flex`}
+      >
+        {LINKS.map((link) => {
+          const isActive = active === link.href;
+          return (
+            <Link
               key={link.href}
               href={link.href}
-              className="rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium text-ink/80 hover:text-ink transition-colors"
+              onClick={(e) => go(e, link.href)}
+              aria-current={isActive ? "true" : undefined}
+              className={`rounded-full px-4 py-2 text-[0.8125rem] transition-colors duration-300 ${
+                isActive
+                  ? "bg-inverse-bg text-inverse-fg"
+                  : "text-muted hover:bg-overlay hover:text-ink"
+              }`}
             >
               {link.label}
-            </a>
-          ))}
-        </nav>
-      </div>
+            </Link>
+          );
+        })}
+      </nav>
 
-      {/* 
-        RIGHT ACTIONS TAB
-        bg-shell (#101012) dark tab.
-        rounded-tr-[32px] sm:rounded-tr-[40px] matches outer container curve perfectly (no white arc leaks!).
-        rounded-bl-[28px] sm:rounded-bl-[34px] curves into light canvas below.
-      */}
-      <div className="absolute top-0 right-0 z-30 bg-shell text-canvas px-6 sm:px-8 h-16 sm:h-20 flex items-center gap-3 rounded-bl-[28px] sm:rounded-bl-[34px]">
-        {/* Concave Inverted Corner SVG - Overlaps 1px to eliminate seam lines */}
-        <InvertedCorner
-          dir="top-right"
-          className="absolute top-0 right-[calc(100%-1px)] w-8 h-8 sm:w-9 sm:h-9 text-shell"
-        />
+      {/* Actions */}
+      <div className={`${island} flex items-center gap-1 p-1.5`}>
+        <ThemeToggle />
 
-        <button
-          type="button"
-          className="hidden sm:flex items-center gap-2 rounded-full border border-canvas/25 px-4 py-2 text-xs sm:text-sm font-sans text-canvas/85 hover:border-canvas/50 transition-colors"
+        <Link
+          href="/#pricing"
+          onClick={(e) => go(e, "/#pricing")}
+          className="hidden rounded-full bg-inverse-bg px-5 py-2.5 text-[0.8125rem] font-medium text-inverse-fg transition-opacity duration-300 hover:opacity-80 sm:block"
         >
-          <span>English</span>
-          <svg
-            className="w-3.5 h-3.5 text-canvas/60"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        <a
-          href="#pricing"
-          className="group flex items-center gap-2.5 rounded-full border border-canvas/30 bg-shell px-5 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-semibold text-canvas hover:bg-canvas hover:text-shell transition-all duration-200 shadow-sm"
-        >
-          <span className="flex h-5.5 w-5.5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-canvas/20 group-hover:bg-shell group-hover:text-canvas transition-colors">
-            <svg
-              className="h-3 w-3 text-canvas group-hover:text-canvas"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-            </svg>
-          </span>
-          <span>Start training</span>
-        </a>
+          Start training
+        </Link>
 
         <button
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-canvas/15 text-canvas md:hidden ml-1"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-overlay md:hidden"
         >
-          <div className="flex h-3.5 w-4 flex-col justify-between">
+          <span aria-hidden="true" className="relative block h-3 w-4">
             <span
-              className={`h-0.5 w-full bg-canvas transition-transform ${
-                open ? "translate-y-[6px] rotate-45" : ""
+              className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
+                open ? "top-1.5 rotate-45" : "top-0.5"
               }`}
             />
             <span
-              className={`h-0.5 w-full bg-canvas transition-opacity ${
-                open ? "opacity-0" : ""
+              className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
+                open ? "top-1.5 -rotate-45" : "top-[0.625rem]"
               }`}
             />
-            <span
-              className={`h-0.5 w-full bg-canvas transition-transform ${
-                open ? "-translate-y-[6px] -rotate-45" : ""
-              }`}
-            />
-          </div>
+          </span>
         </button>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile sheet */}
       {open && (
-        <div className="absolute left-3 right-3 top-20 z-40 flex flex-col gap-1.5 rounded-2xl bg-shell p-4 shadow-2xl border border-canvas/20 md:hidden pointer-events-auto">
+        <div
+          className={`${island} absolute inset-x-4 top-[4.5rem] flex flex-col p-3 md:hidden`}
+        >
           {LINKS.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
-              onClick={() => setOpen(false)}
-              className="min-h-10 rounded-xl px-4 py-2.5 text-sm font-medium text-canvas/90 hover:bg-canvas/10 transition-colors"
+              onClick={(e) => go(e, link.href)}
+              className="display-sm rounded-2xl px-4 py-3 text-xl text-ink transition-colors hover:bg-overlay"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
-          <a
-            href="#pricing"
-            onClick={() => setOpen(false)}
-            className="mt-2 flex min-h-11 items-center justify-center rounded-full bg-accent px-4 py-2.5 text-center text-sm font-semibold text-canvas"
+          <Link
+            href="/#pricing"
+            onClick={(e) => go(e, "/#pricing")}
+            className="btn btn-solid mt-3 w-full"
           >
             Start training
-          </a>
+          </Link>
         </div>
       )}
     </header>

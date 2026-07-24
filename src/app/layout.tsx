@@ -1,29 +1,46 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import Reveal from "@/components/Reveal";
 
-const anton = localFont({
-  src: "../../public/fonts/Anton-Regular.ttf",
-  variable: "--font-anton",
-  weight: "400",
+// Editorial display face. Ships regular + italic only — the italic is a true
+// cut, so it is safe to use for emphasis.
+const instrument = localFont({
+  src: [
+    {
+      path: "../../public/fonts/InstrumentSerif-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/InstrumentSerif-Italic.ttf",
+      weight: "400",
+      style: "italic",
+    },
+  ],
+  variable: "--font-instrument",
   display: "swap",
 });
 
+// Inter and JetBrains Mono are both variable (fvar-verified), so every
+// font-weight resolves to a real master rather than a synthesised fake.
 const inter = localFont({
   src: "../../public/fonts/Inter-Regular.ttf",
   variable: "--font-inter",
   weight: "100 900",
+  style: "normal",
   display: "swap",
 });
 
 const jetbrainsMono = localFont({
-  src: "../../public/fonts/JetBrainsMono-Regular.ttf",
+  src: "../../public/fonts/JetBrainsMono-Variable.ttf",
   variable: "--font-jetbrains",
-  weight: "400",
+  weight: "100 800",
+  style: "normal",
   display: "swap",
 });
 
-const siteUrl = "https://massfitness.app";
+const siteUrl = "https://massfitness.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -56,18 +73,30 @@ export const metadata: Metadata = {
     description:
       "Train live from home. Coach-led classes, structured plans, real-time feedback — no gym required.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#101012",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e0e" },
+  ],
 };
+
+/**
+ * Runs before first paint so a saved theme is applied without the page
+ * flashing the opposite one. Deliberately tiny and dependency-free — anything
+ * that waits for React hydration is already too late to prevent the flash.
+ */
+const themeScript = `
+(function(){try{
+  var t = localStorage.getItem('mf-theme');
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+}catch(e){}})();
+`;
 
 export default function RootLayout({
   children,
@@ -77,12 +106,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${instrument.variable} ${inter.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body
-        suppressHydrationWarning
-        className="min-h-full flex flex-col bg-canvas text-ink"
-      >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="flex min-h-full flex-col bg-paper text-ink">
+        <Reveal />
         {children}
       </body>
     </html>

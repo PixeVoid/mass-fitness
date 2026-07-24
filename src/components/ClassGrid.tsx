@@ -1,50 +1,68 @@
-"use client";
-
 const CLASSES = [
   {
     name: "Strength",
-    tag: "45 min · Bodyweight + dumbbells",
-    gradient: "from-[#ff4d2e] to-[#ff8a63]",
+    duration: "45 min",
+    kit: "Dumbbells",
+    level: "All levels",
+    blurb: "Progressive overload on the compound patterns — squat, hinge, push, pull.",
   },
   {
     name: "HIIT",
-    tag: "30 min · No equipment",
-    gradient: "from-[#1b1f1a] to-[#4a5142]",
+    duration: "30 min",
+    kit: "No equipment",
+    level: "Intermediate",
+    blurb: "Short work windows, high density. The fastest conditioning stimulus we run.",
   },
   {
     name: "Mobility",
-    tag: "25 min · Mat only",
-    gradient: "from-[#c9cfc6] to-[#8f9a86]",
+    duration: "25 min",
+    kit: "Mat only",
+    level: "All levels",
+    blurb: "Hips, thoracic spine, ankles. The session that keeps the other three available.",
   },
   {
     name: "Conditioning",
-    tag: "40 min · Optional bands",
-    gradient: "from-[#ff8a63] to-[#101012]",
+    duration: "40 min",
+    kit: "Optional bands",
+    level: "All levels",
+    blurb: "Aerobic base plus intervals — the engine everything else runs on.",
   },
 ];
 
+/**
+ * A schedule reads better as a list than as a grid of tiles: it lets the eye
+ * run down one column of names and compare durations without re-scanning.
+ */
 export default function ClassGrid() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <ul className="mt-16 sm:mt-20">
       {CLASSES.map((item) => (
-        <div
-          key={item.name}
-          tabIndex={0}
-          className="group relative min-h-[220px] overflow-hidden rounded-3xl bg-shell p-6 focus-visible:outline-2 focus-visible:outline-accent sm:min-h-[260px] sm:p-7"
-        >
-          <div
-            className={`absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-500 group-hover:opacity-90 group-focus-visible:opacity-90 ${item.gradient}`}
-          />
-          <div className="relative flex h-full flex-col justify-between">
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-canvas/50 transition-colors duration-500 group-hover:text-canvas/80">
-              {item.tag}
-            </span>
-            <h3 className="font-display text-3xl text-canvas transition-transform duration-500 group-hover:translate-x-1 sm:text-4xl">
+        <li key={item.name} data-reveal="">
+          <a
+            href="#pricing"
+            className="group grid grid-cols-1 items-baseline gap-x-8 gap-y-4 border-t border-line py-8 transition-colors duration-500 hover:bg-overlay sm:py-10 lg:grid-cols-12"
+          >
+            <h3 className="display-sm text-[1.75rem] text-ink transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1.5 sm:text-[2.125rem] lg:col-span-4">
               {item.name}
             </h3>
-          </div>
-        </div>
+
+            <p className="max-w-sm text-[0.9375rem] leading-relaxed text-muted lg:col-span-5">
+              {item.blurb}
+            </p>
+
+            <div className="label flex flex-wrap items-center gap-x-5 gap-y-2 text-faint lg:col-span-3 lg:justify-end">
+              <span className="numeric">{item.duration}</span>
+              <span>{item.kit}</span>
+              <span
+                aria-hidden="true"
+                className="hidden transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1 lg:inline"
+              >
+                &rarr;
+              </span>
+            </div>
+          </a>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

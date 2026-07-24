@@ -1,66 +1,397 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   MASS FITNESS
+   --------------------------------------------------------------------------
+   Monochrome and editorial. There is no brand colour — emphasis comes from
+   contrast, weight and whitespace, which is what keeps a fitness site feeling
+   composed rather than shouted. Light and dark are both first-class: the
+   palette is one set of role tokens that swaps values, so no component ever
+   hard-codes a colour.
+   ========================================================================== */
+
 :root {
-  /* Mass Fitness design tokens */
-  --mf-shell: #101012;       /* near-black outer shell / nav */
-  --mf-canvas: #f5f3ef;      /* warm off-white page background */
-  --mf-ink: #1b1f1a;         /* deep moss-black text */
-  --mf-accent: #ff4d2e;      /* hot-coral energy accent */
-  --mf-accent-dim: #e8431f;  /* pressed/hover state of accent */
-  --mf-sage: #c9cfc6;        /* secondary text, dividers */
-  --mf-card: #e8e4dc;        /* card surface on canvas */
+  color-scheme: light;
+
+  --paper: #f7f6f4; /* page background — warm off-white */
+  --surface: #ffffff; /* raised panel */
+  --surface-sunk: #f0efec; /* inset well, image placeholder */
+  --ink: #121212; /* primary text */
+  --muted: #6b6b6b; /* secondary text */
+  --faint: #9a9a9a; /* tertiary text, labels */
+  --line: rgba(18, 18, 18, 0.1); /* hairline */
+  --line-strong: rgba(18, 18, 18, 0.24); /* hairline, emphasised */
+  --overlay: rgba(18, 18, 18, 0.04); /* hover wash */
+
+  /* Inverted pair — buttons and any block that flips against the page. */
+  --inverse-bg: #121212;
+  --inverse-fg: #f7f6f4;
+
+  --shadow-soft: 0 1px 2px rgba(18, 18, 18, 0.04),
+    0 12px 32px -16px rgba(18, 18, 18, 0.16);
+
+  /* One easing for the whole site. Consistency here is most of what reads
+     as "designed" in motion. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dark values live in a single place and are applied from two selectors:
+   the OS preference (unless the user has explicitly chosen light) and the
+   explicit data-theme="dark" toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --paper: #0e0e0e;
+    --surface: #161616;
+    --surface-sunk: #1c1c1c;
+    --ink: #f2f1ee;
+    --muted: #9a9a9a;
+    --faint: #6c6c6c;
+    --line: rgba(255, 255, 255, 0.11);
+    --line-strong: rgba(255, 255, 255, 0.26);
+    --overlay: rgba(255, 255, 255, 0.05);
+
+    --inverse-bg: #f2f1ee;
+    --inverse-fg: #0e0e0e;
+
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
+      0 12px 32px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #0e0e0e;
+  --surface: #161616;
+  --surface-sunk: #1c1c1c;
+  --ink: #f2f1ee;
+  --muted: #9a9a9a;
+  --faint: #6c6c6c;
+  --line: rgba(255, 255, 255, 0.11);
+  --line-strong: rgba(255, 255, 255, 0.26);
+  --overlay: rgba(255, 255, 255, 0.05);
+
+  --inverse-bg: #f2f1ee;
+  --inverse-fg: #0e0e0e;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 32px -16px rgba(0, 0, 0, 0.7);
 }
 
 @theme inline {
-  --color-shell: var(--mf-shell);
-  --color-canvas: var(--mf-canvas);
-  --color-ink: var(--mf-ink);
-  --color-accent: var(--mf-accent);
-  --color-accent-dim: var(--mf-accent-dim);
-  --color-sage: var(--mf-sage);
-  --color-card: var(--mf-card);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-overlay: var(--overlay);
+  --color-inverse-bg: var(--inverse-bg);
+  --color-inverse-fg: var(--inverse-fg);
 
-  --font-display: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-display: var(--font-instrument), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
-  background: var(--mf-canvas);
-  color: var(--mf-ink);
-  font-family: var(--font-sans);
+html {
+  /* Instrument Serif ships regular + italic only; never let the browser
+     fake a bold from it. */
+  font-synthesis: weight;
+
+  /* Deliberately NOT scroll-behavior: smooth. The page is ~10 viewports tall,
+     so a global smooth scroll makes any deep link crawl the whole way down,
+     and it hijacks browser restore and find-in-page too. In-page nav clicks
+     call scrollIntoView({ behavior: "smooth" }) themselves, which is where
+     the easing actually belongs. */
+  scroll-padding-top: 6rem;
 }
 
-/* visible keyboard focus everywhere, per frontend-design quality floor */
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv05" 1, "ss03" 1;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s var(--ease), color 0.4s var(--ease);
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 :focus-visible {
-  outline: 2px solid var(--mf-accent);
+  outline: 1.5px solid var(--ink);
   outline-offset: 3px;
+  border-radius: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
 }
 
-@keyframes marquee {
-  from {
-    transform: translateX(0);
+/* ==========================================================================
+   COMPONENTS
+   In @layer components so plain utilities still win over them.
+   ========================================================================== */
+
+@layer components {
+  /* --- Type ------------------------------------------------------------- */
+
+  /* Editorial display. Sentence case, tight leading, optical tracking that
+     opens up as the size comes down. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
-  to {
-    transform: translateX(-50%);
+
+  .display-sm {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  /* The italic is a real cut, not a slant — worth using for emphasis words. */
+  .display em,
+  .display-sm em {
+    font-style: italic;
+  }
+
+  /* Small mono label. One tracking value everywhere it appears. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .numeric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+
+  /* --- Rules ------------------------------------------------------------ */
+
+  .rule {
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  /* --- Buttons ----------------------------------------------------------
+     Flat, no glow, no gradient. Two variants is the whole set.            */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.875rem;
+    padding: 0 1.5rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+    transition: background-color 0.3s var(--ease), color 0.3s var(--ease),
+      border-color 0.3s var(--ease), opacity 0.3s var(--ease);
+  }
+
+  .btn-solid {
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+  }
+
+  .btn-solid:hover {
+    opacity: 0.82;
+  }
+
+  .btn-outline {
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+  }
+
+  .btn-outline:hover {
+    background: var(--overlay);
+  }
+
+  /* --- Links ------------------------------------------------------------
+     Underline sweeps in from the left rather than blinking on.            */
+
+  .link {
+    position: relative;
+    color: var(--muted);
+    transition: color 0.3s var(--ease);
+  }
+
+  .link:hover {
+    color: var(--ink);
+  }
+
+  .link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    height: 1px;
+    width: 100%;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s var(--ease);
+  }
+
+  .link:hover::after {
+    transform: scaleX(1);
+  }
+
+  /* --- Panels ----------------------------------------------------------- */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  /* --- Theme toggle icons -----------------------------------------------
+     Which glyph shows is decided in CSS by the same selectors that pick the
+     palette, so the button is already correct in server-rendered HTML.     */
+
+  .theme-icon-sun {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon-sun {
+      display: inline;
+    }
+    :root:not([data-theme="light"]) .theme-icon-moon {
+      display: none;
+    }
+  }
+
+  :root[data-theme="dark"] .theme-icon-sun {
+    display: inline;
+  }
+
+  :root[data-theme="dark"] .theme-icon-moon {
+    display: none;
+  }
+
+  :root[data-theme="light"] .theme-icon-sun {
+    display: none;
+  }
+
+  :root[data-theme="light"] .theme-icon-moon {
+    display: inline;
+  }
+
+  /* --- Live indicator ---------------------------------------------------
+     Monochrome: a dot with a slow breathing ring, no colour needed.       */
+
+  .live-dot {
+    position: relative;
+    display: inline-block;
+    height: 6px;
+    width: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .live-dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    opacity: 0;
+    animation: breathe 2.8s var(--ease) infinite;
   }
 }
 
-.animate-marquee {
-  animation: marquee 22s linear infinite;
+/* ==========================================================================
+   SCROLL REVEAL
+   Visible is the default state. Reveal.tsx opts an element *in* by setting
+   data-reveal="hidden", and only for elements that are genuinely below the
+   fold. Hiding everything first and un-hiding what's on screen — the obvious
+   approach — flashes the page blank for a frame, because an
+   IntersectionObserver's first callback is asynchronous.
+   ========================================================================== */
+
+[data-reveal] {
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+/* ==========================================================================
+   KEYFRAMES
+   ========================================================================== */
+
+@keyframes breathe {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+/* ==========================================================================
+   SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 3px solid var(--paper);
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }

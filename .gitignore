@@ -2,3 +2,5 @@ node_modules/
 .next/
 .env*.local
 *.log
+tsconfig.tsbuildinfo
+video_frames/

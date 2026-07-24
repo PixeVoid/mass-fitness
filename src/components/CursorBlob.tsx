@@ -64,12 +64,15 @@ export default function CursorBlob() {
     >
       <div
         ref={blobRef}
-        className={`h-[380px] w-[380px] rounded-full blur-3xl transition-opacity duration-500 ${
+        className={`h-[440px] w-[440px] rounded-full blur-3xl transition-opacity duration-500 ${
           active ? "opacity-100" : "opacity-0"
         }`}
         style={{
+          // Built from --overlay so it inverts with the theme: a faint dark
+          // wash on paper, a faint light one in dark mode. A fixed colour
+          // would either vanish or glare depending on the mode.
           background:
-            "radial-gradient(circle, rgba(255,77,46,0.16) 0%, rgba(255,77,46,0.06) 45%, transparent 70%)",
+            "radial-gradient(circle, var(--overlay) 0%, transparent 68%)",
         }}
       />
     </div>

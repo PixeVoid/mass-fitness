@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://massfitness.app";
+const siteUrl = "https://massfitness.in";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
