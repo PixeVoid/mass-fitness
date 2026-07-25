@@ -101,7 +101,7 @@ export default function Nav() {
           className="flex items-center gap-2 text-base text-ink transition-opacity hover:opacity-70 sm:gap-2.5 sm:text-lg"
         >
           <LogoMark className="h-5 sm:h-6" />
-          <span className="display-sm">Mass Fitness</span>
+          <span className="brand-mark">Mass Fitness</span>
         </Link>
       </div>
 
