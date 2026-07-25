@@ -248,6 +248,56 @@ body {
     background: var(--overlay);
   }
 
+  /* --- Pricing plans ----------------------------------------------------
+     One plan carries the highlight by default. On a pointer device the
+     highlight follows the cursor instead of staying pinned to the middle
+     column: hovering the grid drops every plan back to the base treatment,
+     and the hovered plan then takes it. The two hover rules have equal
+     specificity, so the "lift the hovered one" rule must come second.     */
+
+  .plan {
+    background: var(--paper);
+    transition: background-color 0.3s var(--ease);
+  }
+
+  .plan-featured {
+    background: var(--surface);
+  }
+
+  .plan-cta {
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    background: transparent;
+  }
+
+  .plan-featured .plan-cta {
+    border-color: transparent;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+  }
+
+  @media (hover: hover) {
+    .plan-grid:hover .plan {
+      background: var(--paper);
+    }
+
+    .plan-grid:hover .plan .plan-cta {
+      border-color: var(--line-strong);
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .plan-grid .plan:hover {
+      background: var(--surface);
+    }
+
+    .plan-grid .plan:hover .plan-cta {
+      border-color: transparent;
+      background: var(--inverse-bg);
+      color: var(--inverse-fg);
+    }
+  }
+
   /* --- Links ------------------------------------------------------------
      Underline sweeps in from the left rather than blinking on.            */
 

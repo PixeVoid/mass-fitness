@@ -135,14 +135,14 @@ export default function Home() {
             body="No lock-in, no joining fee. Switch or cancel at the end of any month."
           />
 
-          <div className="mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-3">
+          <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-3">
             {PLANS.map((plan, index) => (
               <div
                 key={plan.name}
                 data-reveal=""
                 style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
-                className={`flex flex-col p-8 sm:p-10 ${
-                  plan.featured ? "bg-surface" : "bg-paper"
+                className={`plan flex flex-col p-8 sm:p-10 ${
+                  plan.featured ? "plan-featured" : ""
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-4">
@@ -177,12 +177,7 @@ export default function Home() {
                   ))}
                 </ul>
 
-                <a
-                  href="#contact"
-                  className={`btn mt-10 w-full ${
-                    plan.featured ? "btn-solid" : "btn-outline"
-                  }`}
-                >
+                <a href="#contact" className="btn plan-cta mt-10 w-full">
                   Choose {plan.name.toLowerCase()}
                 </a>
               </div>
