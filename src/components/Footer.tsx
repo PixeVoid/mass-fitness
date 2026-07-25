@@ -243,7 +243,7 @@ export default function Footer() {
         className="pointer-events-none select-none overflow-hidden px-5 sm:px-8 lg:px-12"
       >
         <span
-          className="display block whitespace-nowrap text-ink opacity-[0.06]"
+          className="brand-mark block whitespace-nowrap text-ink opacity-[0.06]"
           style={{ fontSize: "clamp(4rem, 15.5vw, 15rem)", lineHeight: 0.85 }}
         >
           Mass Fitness
