@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Profile, Subscription } from "@/lib/db-types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -83,6 +83,27 @@ export const requireOnboardedProfile = cache(async (): Promise<Profile> => {
 export const isAdmin = cache(async (): Promise<boolean> => {
   const profile = await getProfile();
   return profile?.role === "admin";
+});
+
+/**
+ * Gate for everything under /admin.
+ *
+ * Non-admins get `notFound()` rather than a redirect or a 403 page: an admin
+ * area that announces its own existence to every logged-in member is an
+ * invitation to go looking. As far as a member is concerned the route does not
+ * exist.
+ *
+ * Must be called by every admin page *and* every admin Server Action — an
+ * action is a public endpoint, and the fact that only an admin page renders
+ * the button that calls it protects nothing.
+ */
+export const requireAdmin = cache(async (): Promise<Profile> => {
+  await requireUser();
+  const profile = await getProfile();
+
+  if (!profile || profile.role !== "admin") notFound();
+
+  return profile;
 });
 
 /**

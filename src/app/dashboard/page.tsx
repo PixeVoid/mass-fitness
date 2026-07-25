@@ -32,6 +32,9 @@ export default async function DashboardPage() {
     ? getPlan(subscription.plan_tier, subscription.plan_duration)
     : null;
 
+  // Trainers and admins run classes rather than buy them.
+  const isStaff = profile.role === "trainer" || profile.role === "admin";
+
   return (
     <main className="mx-auto w-full max-w-[1000px] px-5 py-16 sm:px-8 sm:py-24">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
@@ -42,18 +45,34 @@ export default async function DashboardPage() {
           </h1>
         </div>
 
-        <form action={signOut}>
-          <button type="submit" className="btn btn-outline">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          {profile.role === "admin" && (
+            <Link href="/admin" className="btn btn-outline">
+              Admin
+            </Link>
+          )}
+          <form action={signOut}>
+            <button type="submit" className="btn btn-outline">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* MEMBERSHIP */}
       <section className="mt-14 border-t border-line pt-8 sm:mt-20">
-        <h2 className="label text-faint">Membership</h2>
+        <h2 className="label text-faint">
+          {isStaff ? "Access" : "Membership"}
+        </h2>
 
-        {subscription && plan ? (
+        {isStaff && !subscription ? (
+          // Staff are not customers. Telling a coach their classes are locked
+          // is both wrong and alarming.
+          <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+            You&apos;re signed in as {profile.role === "admin" ? "an admin" : "a trainer"}.
+            No membership needed — you have access to the classes you run.
+          </p>
+        ) : subscription && plan ? (
           <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-3">
             <p className="display-sm text-[1.75rem] text-ink">
               {plan.label}
@@ -96,7 +115,14 @@ export default async function DashboardPage() {
           <ul className="mt-6">
             {classes.map((item) => {
               const window = classWindow(item);
-              const locked = item.is_premium && !subscription;
+              // Mirrors the rule in /api/live/token: whoever is running the
+              // class is not a customer of it. Without this a trainer whose
+              // own membership lapsed gets "Members only" on the class they
+              // are supposed to be teaching — the token route would have let
+              // them in, but the dashboard gives them no way to ask.
+              const isHost =
+                profile.role === "admin" || item.trainer_id === profile.id;
+              const locked = item.is_premium && !subscription && !isHost;
 
               return (
                 <li
@@ -131,7 +157,7 @@ export default async function DashboardPage() {
                         href={`/live/${item.id}`}
                         className="btn btn-solid w-full sm:w-auto"
                       >
-                        Join now
+                        {isHost ? "Start class" : "Join now"}
                       </Link>
                     ) : (
                       <span className="label text-faint">
