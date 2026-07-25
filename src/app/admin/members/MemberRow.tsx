@@ -9,6 +9,7 @@ import {
   type ActionState,
 } from "@/app/actions/admin";
 import type { Profile, Subscription } from "@/lib/db-types";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { PLANS, formatPaise, getPlan } from "@/lib/plans";
 
 /**
@@ -43,8 +44,8 @@ export default function MemberRow({
             )}
           </p>
           <p className="numeric mt-1 text-[0.8125rem] text-faint">
-            {profile.phone ?? "no phone"}
-            {profile.email ? ` · ${profile.email}` : ""}
+            {profile.email ?? "no email"}
+            {profile.phone ? ` · ${formatPhoneForDisplay(profile.phone)}` : ""}
           </p>
           {profile.fitness_goal && (
             <p className="mt-1 text-[0.8125rem] text-muted">

@@ -8,16 +8,16 @@ import LoginForm from "./LoginForm";
 // still be indexed if something links to it.
 export const metadata: Metadata = {
   title: "Log in",
-  description: "Log in to Mass Fitness with your mobile number.",
+  description: "Log in to Mass Fitness with Google or your email.",
   robots: { index: false, follow: false },
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   return (
     <AuthShell
@@ -27,7 +27,7 @@ export default async function LoginPage({
           Log in or <em>sign up.</em>
         </>
       }
-      intro="One mobile number, one account. We'll text you a code — there's no password to remember."
+      intro="One account, no password. Continue with Google, or we'll email you a code."
       footer={
         <>
           By continuing you agree to our{" "}
@@ -42,7 +42,7 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm next={safeRedirectTarget(next)} />
+      <LoginForm next={safeRedirectTarget(next)} error={error} />
     </AuthShell>
   );
 }

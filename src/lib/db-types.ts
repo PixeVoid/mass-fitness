@@ -20,7 +20,11 @@ export type ClassStatus = "scheduled" | "live" | "ended" | "cancelled";
 export type Profile = {
   id: string;
   name: string | null;
+  // Optional contact field only — see 0002_email_auth.sql. Not unique, not
+  // the auth key.
   phone: string | null;
+  // The account key since 0002_email_auth.sql. Unique (partial index, null
+  // excluded) at the DB level.
   email: string | null;
   fitness_goal: string | null;
   role: UserRole;
@@ -66,6 +70,16 @@ export type ChatLog = {
   created_at: string;
 }
 
+export type Lead = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  summary: string | null;
+  source: string;
+  created_at: string;
+}
+
 type Insertable<T, Optional extends keyof T> = Omit<T, Optional> &
   Partial<Pick<T, Optional>>;
 
@@ -102,6 +116,15 @@ export interface Database {
         Row: ChatLog;
         Insert: Insertable<ChatLog, "id" | "response" | "created_at">;
         Update: Partial<ChatLog>;
+        Relationships: [];
+      };
+      leads: {
+        Row: Lead;
+        Insert: Insertable<
+          Lead,
+          "id" | "email" | "summary" | "source" | "created_at"
+        >;
+        Update: Partial<Lead>;
         Relationships: [];
       };
     };

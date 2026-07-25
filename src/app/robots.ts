@@ -14,6 +14,7 @@ export default function robots(): MetadataRoute.Robots {
         "/admin",
         "/login",
         "/onboarding",
+        "/auth/callback",
         "/subscribe/callback",
       ],
     },

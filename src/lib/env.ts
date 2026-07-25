@@ -29,6 +29,12 @@ export const publicEnv = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   livekitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "",
+  // Used to build the Google OAuth redirect URL. Reading it from a header on
+  // the incoming request would also work, but a header can be spoofed by
+  // whoever sends the request (Host, X-Forwarded-Host) — an attacker-supplied
+  // value there would send Google's callback to a domain of their choosing.
+  // An env var is fixed at deploy time.
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };
 
 export function assertPublicSupabaseEnv(): { url: string; anonKey: string } {

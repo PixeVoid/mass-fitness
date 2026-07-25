@@ -23,11 +23,11 @@ const GOALS = [
 export default function OnboardingForm({
   next,
   defaultName,
-  defaultEmail,
+  defaultPhone,
 }: {
   next: string;
   defaultName?: string | null;
-  defaultEmail?: string | null;
+  defaultPhone?: string | null;
 }) {
   const [state, action] = useActionState<OnboardingState, FormData>(
     completeOnboarding,
@@ -92,28 +92,28 @@ export default function OnboardingForm({
       </div>
 
       <div>
-        <label htmlFor="email" className="field-label">
-          Email <span className="text-faint">(optional)</span>
+        <label htmlFor="phone" className="field-label">
+          Mobile number <span className="text-faint">(optional)</span>
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          maxLength={254}
-          defaultValue={defaultEmail ?? ""}
-          placeholder="you@example.com"
-          aria-invalid={state.fieldErrors?.email ? "true" : undefined}
-          aria-describedby={state.fieldErrors?.email ? "email-error" : undefined}
-          className="field"
+          id="phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          maxLength={20}
+          defaultValue={defaultPhone ?? ""}
+          placeholder="98765 43210"
+          aria-invalid={state.fieldErrors?.phone ? "true" : undefined}
+          aria-describedby={state.fieldErrors?.phone ? "phone-error" : undefined}
+          className="field numeric"
         />
         <p className="mt-2 text-[0.8125rem] text-faint">
-          Only used for receipts and class reminders.
+          Only used for class reminders and support.
         </p>
-        {state.fieldErrors?.email && (
-          <p id="email-error" role="alert" className="field-error">
-            {state.fieldErrors.email}
+        {state.fieldErrors?.phone && (
+          <p id="phone-error" role="alert" className="field-error">
+            {state.fieldErrors.phone}
           </p>
         )}
       </div>

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AuthShell from "@/components/auth/AuthShell";
 import { getProfile, requireUser } from "@/lib/auth/dal";
-import { formatPhoneForDisplay } from "@/lib/phone";
 import { safeRedirectTarget } from "@/lib/routes";
 import OnboardingForm from "./OnboardingForm";
 
@@ -36,16 +35,12 @@ export default async function OnboardingPage({
           Who are we <em>training?</em>
         </>
       }
-      intro={
-        user.phone
-          ? `Signed in as ${formatPhoneForDisplay(user.phone)}.`
-          : undefined
-      }
+      intro={user.email ? `Signed in as ${user.email}.` : undefined}
     >
       <OnboardingForm
         next={target}
         defaultName={profile?.name}
-        defaultEmail={profile?.email}
+        defaultPhone={profile?.phone}
       />
     </AuthShell>
   );

@@ -46,7 +46,7 @@ export default async function AdminOverviewPage() {
                     )}
                   </p>
                   <p className="numeric mt-1 text-[0.8125rem] text-faint">
-                    {profile.phone ?? "no phone"}
+                    {profile.email ?? "no email"}
                   </p>
                 </div>
 

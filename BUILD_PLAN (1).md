@@ -15,7 +15,7 @@ Last updated: 2026-07-25. Update this table in the same commit as the work it de
 | 0 — Project setup & design system | ✅ Done | Next 16 + TS + Tailwind 4 scaffolded; schema + RLS written as a migration. Supabase project itself still needs creating by a human — see "What the user still has to do". |
 | 0.5 — SEO foundation | ✅ Done | Metadata API, `sitemap.ts`, `robots.ts`, OG image, JSON-LD all in place. Behind-auth routes now carry `noindex` as well as a robots disallow. |
 | 1 — Landing page | ✅ Done | 3D hero, features, pricing, contact. |
-| 2 — Auth + data capture | ✅ Code complete | Phone-OTP login, profile capture, protected dashboard. Untested against a live Supabase project. |
+| 2 — Auth + data capture | ✅ Code complete | **Switched from phone-OTP to email-OTP + Google OAuth 2026-07-25** — see Section 0.3. Profile capture, protected dashboard. Untested against a live Supabase project. |
 | 3 — Subscriptions + PhonePe | ⬜ Not started | Schema and plan catalogue are ready for it. Blocked on merchant account + confirmed pricing. |
 | 4 — Live classes (LiveKit) | 🟡 Backend done | Token route with the paywall gate, plus a minimal viewer. Needs a real LiveKit project to test. |
 | 5 — Chatbot (Groq) | 🟡 Backend done | `/api/chat` streaming route. No chat UI widget yet — that is the remaining piece. |
@@ -33,68 +33,58 @@ The project is on **Next.js 16**, which is not the Next.js most training data de
 
 None of it is code — all of it is account setup, and nothing below can be done from a dev session.
 
-1. **Create the Supabase project**, then run `supabase/migrations/0001_init.sql` against it (SQL editor or `supabase db push`).
-2. **Enable Phone auth** in Supabase → Authentication → Providers. For testing you do **not** need a paid SMS provider — see Section 0.3.
-3. **Create a LiveKit Cloud project** for the URL, key and secret.
-4. **Get a Groq API key.**
-5. Copy `.env.example` → `.env.local` and fill it in. Same values go into Vercel's env settings for deploys.
-6. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
+1. **Create the Supabase project**, then run `supabase/migrations/0001_init.sql` and `supabase/migrations/0002_email_auth.sql` against it, in that order (SQL editor or `supabase db push`).
+2. **Enable Email auth** in Supabase → Authentication → Providers (on by default on new projects, but confirm). No SMS/WhatsApp provider needed — see Section 0.3.
+3. **Create a Google OAuth client** and wire it into Supabase → Authentication → Providers → Google. Also see Section 0.3.
+4. **Create a LiveKit Cloud project** for the URL, key and secret.
+5. **Get a Groq API key.**
+6. Copy `.env.example` → `.env.local` and fill it in, including `NEXT_PUBLIC_SITE_URL`. Same values go into Vercel's env settings for deploys.
+7. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
    ```sql
-   update public.profiles set role = 'admin' where phone = '+91XXXXXXXXXX';
+   update public.profiles set role = 'admin' where email = 'you@example.com';
    ```
    Everything after that (trainers, memberships, classes) is done in `/admin`.
 
 ---
 
-## 0.3 OTP delivery — options, costs, and what to do now
+## 0.3 Auth channel — decision reversed 2026-07-25: email OTP + Google OAuth, not phone
 
-**The honest headline: there is no 100% free, production-grade way to deliver OTPs to Indian phone numbers.** Not SMS, not WhatsApp. Anyone claiming otherwise is describing a trial credit, a rate-limited dev tier, or something that violates a provider's terms. Budget for it — but it is small, and it does not block a single day of building.
+**Original decision (Section 0) was Supabase phone-OTP.** In practice that meant no login could be tested — not even locally — without a paid SMS/WhatsApp provider or TRAI DLT registration, both of which have day-to-week lead times. That blocked every downstream phase behind an account-setup bottleneck rather than a code one. Superseded by this section; **Section 0's auth row should be read as "Email OTP + Google OAuth," not phone.**
 
-### Right now: test numbers. Free, no provider, no code change.
+### What ships now
 
-Supabase's Phone provider settings let you register **test phone numbers with fixed OTP codes**. The code is never sent anywhere — Supabase just accepts the one you configured. Look under Authentication → Providers → Phone (sometimes shown as "test OTP" or "test phone numbers").
+1. **Google OAuth** — the primary path. Free, no provider account beyond Supabase + a Google Cloud OAuth client, and returning users skip the code-entry step entirely.
+2. **Email OTP** — the fallback for anyone without (or not wanting to use) a Google account. Free at MVP volume via Supabase's built-in email sending, or a real SMTP provider (Resend, Brevo — both have free tiers) once volume outgrows it.
+3. **Phone becomes an ordinary profile field**, captured optionally at onboarding for class reminders and support lookup. It is no longer unique, no longer the account key, and login no longer depends on it — see `supabase/migrations/0002_email_auth.sql`.
 
-Register one number per role and the entire app becomes testable today, at zero cost:
+Why this ranks above phone OTP for this app specifically: **zero dependency on Indian telecom regulation.** DLT registration (SMS) and WhatsApp Business template approval both gate on entities outside Supabase and outside this codebase. Google OAuth and Supabase email both work the moment the accounts exist — no approval queue.
 
-| Number | Code | Use for |
-|---|---|---|
-| `+919999900001` | `123456` | Normal customer |
-| `+919999900002` | `123456` | Trainer |
-| `+919999900003` | `123456` | Admin |
+### One-time setup (both required for the combination to work)
 
-Log in as each, promote the last one to admin with the SQL above, and every flow in this document — onboarding, the paywall, class scheduling, host vs viewer LiveKit tokens — can be exercised end to end. **Do this before paying anyone anything.** Remove the test numbers before launch; they are permanent backdoors otherwise.
+**Email OTP:**
+- Supabase → Authentication → Providers → **Email** should already be enabled on a new project (screenshots during setup showed it "Enabled" by default). If not, toggle it on. Nothing else to configure for MVP volume — Supabase's built-in sender covers testing and early traffic.
+- **Supabase's built-in email sender is rate-limited to a handful per hour and is explicitly not for production.** Once real signups start, connect real SMTP (Resend's free tier is 3,000/month) under Authentication → Providers → Email → SMTP Settings.
 
-### For launch: the real options, ranked
+**Google OAuth:**
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create (or reuse) a project → APIs & Services → Credentials → **Create OAuth client ID** → Web application.
+2. Authorised redirect URI: `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback` (Supabase's own callback, not this app's — copy the exact value Supabase shows you in the next step).
+3. Copy the generated Client ID and Client Secret into Supabase → Authentication → Providers → **Google**, and enable it.
+4. Set `NEXT_PUBLIC_SITE_URL` in `.env.local` (and in Vercel for deploys) to this app's real URL — it's what builds the second-stage redirect back from `/auth/callback` to `/dashboard` or `/onboarding`. `src/app/auth/callback/route.ts` is where that handoff happens.
+5. **Consider enabling "linked accounts"** under Supabase → Authentication → Providers → Email settings, so a user who first signs up by email and later clicks "Continue with Google" with the same address lands on one account rather than two. Without it, Supabase does not automatically merge them.
 
-**1. WhatsApp OTP (recommended for this business).** Supabase supports WhatsApp as an OTP channel via Twilio Verify.
+### Testing without any of the above
 
-- **Why it fits here specifically:** the landing page already sends people to WhatsApp (`wa.me/916207524549`). Customers are already reachable there, so an OTP arriving on WhatsApp is consistent rather than surprising. Delivery is also more reliable than Indian SMS, which gets filtered aggressively.
-- **No DLT registration.** This is the big practical win — DLT is the slow, bureaucratic part of Indian SMS.
-- **Not free.** Meta bills authentication-category template messages. In India these are usually cheaper per message than SMS, but check current rates — Meta has repriced this repeatedly.
-- **Setup cost:** a Meta Business account, WhatsApp Business API access, and template approval. Days, not hours. Start it early.
-
-**2. SMS via MSG91 or Twilio.** The conventional path.
-
-- MSG91 is India-local and generally cheaper for Indian numbers than Twilio.
-- **Requires TRAI DLT registration** — entity registration plus template approval, and it has a real lead time. This is the thing that will delay a launch if left late.
-
-**3. Email OTP as a free fallback.** The only genuinely free channel at this scale.
-
-- Supabase supports email OTP natively, and the auth code in `src/app/actions/auth.ts` is ~90% reusable — `signInWithOtp({ phone })` becomes `signInWithOtp({ email })`.
-- With your own SMTP (Resend, Brevo, or similar free tiers) the per-message cost at MVP volume is zero.
-- **Supabase's built-in email sender is rate-limited to a handful per hour and is explicitly not for production** — you must connect real SMTP.
-- **Cost:** phone number capture. The current design makes the phone number the account key, which is exactly what customer support wants to search by. Going email-primary means collecting the phone separately, as an ordinary profile field, and losing the guarantee that it is verified.
-- **This changes a locked decision** (Section 0: "Supabase Auth — Phone OTP"). Do not swap it silently — it needs an explicit call.
+Supabase's local dev stack (`supabase start`) supports fixed test OTPs via `supabase/config.toml`, but that only helps local development, not a hosted project — hosted Supabase has no test-OTP bypass. For a hosted project the fastest path to a working login is standing up the two providers above; both are same-day setup once you have a Google account and a Supabase project.
 
 ### Do not do this
 
-**Unofficial WhatsApp libraries** (Baileys, whatsapp-web.js, and anything else that drives WhatsApp Web with a personal number). They are free and they work, right up until they don't. They violate WhatsApp's terms, and the penalty is a permanent ban of the number — which, for this business, is the number printed on the landing page and used for actual customer conversations. The downside is losing your primary customer channel to save a few hundred rupees a month.
+**Unofficial WhatsApp libraries** (Baileys, whatsapp-web.js, and anything else that drives WhatsApp Web with a personal number). Free until the number gets permanently banned — a real risk given this business already prints its WhatsApp number on the landing page for real customer conversations.
 
-**Firebase Phone Auth** has a free quota, but it means running a second auth system alongside Supabase — two user tables, two session models, and the `profiles.id → auth.users.id` foreign key this whole schema is built on stops meaning anything. Not worth it.
+**Firebase Phone Auth** would mean running a second auth system alongside Supabase — two user tables, two session models, and the `profiles.id → auth.users.id` foreign key this whole schema is built on stops meaning anything. Not worth it even though it has a free quota.
 
-### Recommendation
+### If phone OTP becomes worth it again later
 
-Test numbers now; WhatsApp via Twilio Verify at launch; keep email OTP in the back pocket as a fallback channel if WhatsApp approval drags. Phone stays the account key either way.
+WhatsApp OTP via Twilio Verify remains the best *phone-based* option if there's ever a product reason to add it back (e.g., users without email literacy) — no DLT registration needed, and it's consistent with the landing page's existing WhatsApp CTA. SMS via MSG91 is the fallback to that. Neither is blocking anything today.
 
 ---
 
@@ -106,7 +96,7 @@ Test numbers now; WhatsApp via Twilio Verify at launch; keep email OTP in the ba
 | Styling | **Tailwind CSS** | Fast, consistent, works well with design tokens |
 | 3D / animation | **React Three Fiber (R3F) + drei + Framer Motion** | Needed for the Dribbble-tier 3D hero the user wants |
 | Backend / DB | **Supabase (Postgres + Auth + Storage + Realtime)** | User already knows Supabase; single provider covers auth, DB, and later realtime needs |
-| Auth | **Supabase Auth — Phone OTP** | User collects phone numbers anyway; avoids separate password-reset flow |
+| Auth | **Supabase Auth — Email OTP + Google OAuth** (reversed from phone OTP 2026-07-25, see Section 0.3) | Phone OTP required TRAI DLT registration or WhatsApp Business approval before a single login could be tested — both gate on external approval queues measured in days to weeks. Email + Google need no such approval. Phone is kept as an optional profile field for support/reminders. |
 | Payments | **PhonePe API (server-side integration only)** | User explicitly has PhonePe access. Requires a registered PhonePe merchant/business account before going live — flag this to the user if not yet done. |
 | Chatbot LLM | **Groq API (Llama 3.3 70B or Qwen)**, OpenAI-compatible schema | Free tier ~14,400 req/day, fastest response time of free options — good fit for FAQ/motivation bot UX. Wire it through an OpenAI-compatible client so it's swappable to OpenRouter/another provider later with a config change, not a rewrite. |
 | Live classes | **LiveKit (self-hosted or LiveKit Cloud free tier)** | Full control, in-app branded experience, gated properly behind subscription status (unlike YouTube Live links) |
@@ -175,16 +165,16 @@ Test numbers now; WhatsApp via Twilio Verify at launch; keep email OTP in the ba
 
 ## 1. Data model (Supabase / Postgres) — ✅ implemented
 
-**Authoritative source: `supabase/migrations/0001_init.sql`.** The TypeScript mirror lives in `src/lib/db-types.ts` and must be updated in the same commit as any migration.
+**Authoritative source: `supabase/migrations/0001_init.sql` + `0002_email_auth.sql`.** The TypeScript mirror lives in `src/lib/db-types.ts` and must be updated in the same commit as any migration.
 
-The shape below is what was built. It differs from the original sketch in four deliberate places, each noted.
+The shape below is what was built. It differs from the original sketch in four deliberate places, each noted — plus one later reversal (`0002`): `phone` was originally the unique auth key, `email` is now, per Section 0.3.
 
 ```sql
 profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   name          text,
-  phone         text unique,
-  email         text,
+  phone         text,                    -- CHANGED (0002): optional contact field, no longer unique or the auth key
+  email         text unique,             -- CHANGED (0002): now the auth key (partial unique index, null excluded)
   fitness_goal  text,
   role          text default 'member',   -- ADDED: 'member' | 'trainer' | 'admin'
   onboarded_at  timestamptz,             -- ADDED: null => send user to /onboarding
@@ -270,8 +260,8 @@ Two follow-ups from the backend work:
 - No backend calls needed here beyond CTA routing.
 
 ### Phase 2 — Auth + data capture — ✅ code complete
-- Supabase phone-OTP signup/login flow.
-- On first login, collect name + phone (+ optional fitness goal) → write to `profiles`.
+- Supabase **email-OTP + Google OAuth** signup/login flow (reversed from phone-OTP 2026-07-25 — see Section 0.3 for why).
+- On first login, collect name (+ optional fitness goal + optional phone) → write to `profiles`.
 - This table is what customer support will query — keep it simple and queryable.
 
 **What was built**
@@ -281,17 +271,22 @@ Two follow-ups from the backend work:
 | `src/lib/supabase/{client,server,admin}.ts` | Browser / request-scoped server / service-role clients. `admin.ts` imports `server-only`, so leaking it into a client bundle is a build error rather than a leaked key. |
 | `src/proxy.ts` | Refreshes the Supabase session on every navigation, plus an **optimistic** redirect for signed-out users. Not the access control — see below. |
 | `src/lib/auth/dal.ts` | The Data Access Layer. `requireUser`, `requireOnboardedProfile`, `getActiveSubscription`, `isAdmin`. Every one is wrapped in React `cache()`, so a page that asks three times pays for one query. |
-| `src/app/actions/auth.ts` | Server Actions: `sendOtp`, `verifyOtp`, `completeOnboarding`, `signOut`. |
+| `src/app/actions/auth.ts` | Server Actions: `sendOtp`, `verifyOtp` (email), `signInWithGoogle`, `completeOnboarding`, `signOut`. |
+| `src/app/auth/callback/route.ts` | Route Handler — Google's redirect lands here with a `code` param; exchanges it for a session via `exchangeCodeForSession`, then routes to onboarding or `next` depending on profile state. Not a Server Action because it's a cross-site GET from Google, not a form post from our own page. |
 | `src/app/login/`, `src/app/onboarding/`, `src/app/dashboard/` | The screens. |
-| `src/lib/phone.ts` | E.164 normalisation. Without it `9876543210` and `+919876543210` become two accounts for the same person. |
+| `src/lib/phone.ts` | E.164 normalisation, still used — phone is now an optional profile field (onboarding + admin display), not the auth key. |
 
-**Three decisions worth not re-litigating:**
+**Four decisions worth not re-litigating:**
 
-- **Server Actions, not API routes, for auth.** The OTP never passes through client-side code we control, and Supabase's cookie writes land on a response that is still open.
+- **Server Actions, not API routes, for the email-OTP form.** The code never passes through client-side code we control, and Supabase's cookie writes land on a response that is still open.
+- **Google OAuth is a Server Action + Route Handler pair, not client-side `supabase-js`.** `signInWithGoogle` (Server Action) starts the handshake and redirects to Google; `/auth/callback` (Route Handler) finishes it. Keeping the whole flow server-side means the session cookie is set the same way as the email-OTP path, and there's exactly one place (`dal.ts`) that ever reads "who is this."
 - **The proxy is not the security boundary.** It runs on prefetches and cannot do database work cheaply, so it only decides "signed out → /login". Real gating is the DAL, each route handler, and RLS — three layers, each next to the data.
 - **`getUser()`, never `getSession()`.** `getSession()` trusts a cookie the client could have forged; `getUser()` revalidates against the auth server.
 
-**Still to do:** Supabase phone auth needs an SMS provider connected before any of this sends a message. Nothing has been tested against a live project.
+**Still to do:**
+- Create the Google OAuth client and paste its ID/secret into Supabase (Section 0.3) — the code is ready, the account isn't.
+- Nothing has been tested against a live Supabase project yet.
+- Consider enabling Supabase's "linked accounts" setting so a user who signs up by email and later uses Google with the same address doesn't get two separate accounts (Section 0.3, step 5).
 
 ### Phase 3 — Subscriptions + PhonePe payment — ⬜ not started
 - Plan tiers are **tier × duration** — see Section 1. The catalogue is already built at `src/lib/plans.ts`.
@@ -461,9 +456,10 @@ Original spec:
 
 **New flags raised by the backend work:**
 
-7. **OTP delivery channel for launch.** Testing is unblocked for free via test numbers — see **Section 0.3** for the full comparison. The decision needed is WhatsApp (recommended) vs SMS vs email-as-fallback, and it needs making early because both WhatsApp approval and SMS DLT registration have lead times measured in days.
+7. ~~OTP delivery channel for launch~~ — resolved 2026-07-25, differently than originally framed. Phone OTP (WhatsApp/SMS) is dropped in favour of **email OTP + Google OAuth**, which need no DLT registration or WhatsApp Business approval. See **Section 0.3**. Phone-based OTP is still available to add back later if there's a product reason (Section 0.3, final subsection).
 8. ~~Who is a trainer?~~ — resolved. `/admin/members` sets roles and `/admin/classes` assigns trainers. Only the first admin promotion still needs SQL.
 9. **Subscription expiry sweep.** Nothing currently moves a subscription from `active` to `expired` when its term ends. Access checks compare against `end_date` so an expired member is correctly locked out regardless — but the `status` column will drift from reality, and the admin dashboard reads `status`, so it will overstate active memberships. A `pg_cron` job should flip them; worth doing in Phase 3 alongside the payment writes.
+10. **Account linking for email + Google.** If a user signs up with email first and later uses Google with the same address, Supabase creates two separate accounts unless "linked accounts" is enabled in the dashboard (Section 0.3, step 5). Worth confirming this is on before launch.
 
 ---
 
@@ -474,11 +470,10 @@ Phases 4 and 5 are independent of each other and could be reordered or paralleli
 
 ### Recommended next steps
 
-The code is now ahead of the accounts in every direction. Nothing further is worth building until the app has been run against a real Supabase project once — and that no longer costs anything, because test OTP numbers remove the SMS provider from the critical path (Section 0.3).
+The code is now ahead of the accounts in every direction. Nothing further is worth building until the app has been run against a real Supabase project once — and that no longer needs a paid provider, because email OTP + Google OAuth replace phone (Section 0.3).
 
-1. **Stand up Supabase**, run the migration, register three test phone numbers, fill `.env.local`. Promote yourself to admin with the one SQL statement.
-2. **Walk all three roles.** Log in as the customer → onboard → dashboard. Promote the second number to trainer in `/admin/members`. Schedule a class in `/admin/classes` assigned to that trainer. Confirm the customer sees "Members only", grant them a membership, confirm it unlocks, cancel it, confirm it re-locks. That sequence exercises the entire backend.
+1. **Stand up Supabase**, run both migrations (`0001_init.sql`, `0002_email_auth.sql`), set up the Google OAuth client, fill `.env.local` (including `NEXT_PUBLIC_SITE_URL`). Promote yourself to admin with the one SQL statement (by email now, not phone).
+2. **Walk all three roles.** Log in as yourself → onboard → dashboard. Sign up a second account (a friend's email, or an incognito window + your own via a different method) and promote it to trainer in `/admin/members`. Schedule a class in `/admin/classes` assigned to that trainer. Confirm the customer sees "Members only", grant them a membership, confirm it unlocks, cancel it, confirm it re-locks. That sequence exercises the entire backend.
 3. **Add LiveKit** and repeat step 2's last part with a real join: trainer publishes, customer receives, and a customer with no membership is refused a token.
-4. **Start the WhatsApp Business / DLT paperwork** in parallel with all of the above. It is the longest-lead item and the only one that cannot be hurried at the end.
-5. **Then Phase 3 (payments)**, once the merchant account and quarterly/annual pricing land.
-6. **The chat widget** whenever — `/api/chat` is waiting for a consumer, and it is self-contained UI work.
+4. **Then Phase 3 (payments)**, once the merchant account and quarterly/annual pricing land.
+5. **The chat widget** whenever — `/api/chat` is waiting for a consumer, and it is self-contained UI work.
