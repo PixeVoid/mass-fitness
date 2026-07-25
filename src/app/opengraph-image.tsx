@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { ImageResponse } from "next/og";
 
 export const alt = "Mass Fitness — Train at home, coached like you're in the room";
@@ -12,6 +14,13 @@ const MUTED = "#6b6b6b";
 const LINE = "rgba(18,18,18,0.12)";
 
 export default async function OpengraphImage() {
+  // Satori (what ImageResponse renders with) can't resolve a same-origin
+  // "/logo/..." URL at build/request time the way a browser would, so the
+  // mark is inlined as a data URI read straight off disk instead.
+  const logoBase64 = readFileSync(
+    join(process.cwd(), "public/logo/mf-mark-light.png"),
+  ).toString("base64");
+
   return new ImageResponse(
     (
       <div
@@ -25,8 +34,16 @@ export default async function OpengraphImage() {
           padding: "72px 80px",
         }}
       >
-        <div style={{ display: "flex", color: MUTED, fontSize: 24, letterSpacing: 3 }}>
-          MASS FITNESS
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img
+            src={`data:image/png;base64,${logoBase64}`}
+            width={40}
+            height={23}
+            alt=""
+          />
+          <div style={{ display: "flex", color: MUTED, fontSize: 24, letterSpacing: 3 }}>
+            MASS FITNESS
+          </div>
         </div>
 
         <div

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LogoMark } from "./Logo";
 import { scrollToFeatureSlug } from "@/lib/featureScroll";
 
 const COMPANY_LINKS = [
@@ -90,6 +91,15 @@ function handleFooterLinkClick(
   }
 }
 
+// A same-page Link to "/" is a no-op in Next.js, so clicking the brand mark
+// while already on the homepage (just scrolled down) would otherwise do
+// nothing — same fix as the header's wordmark.
+function handleBrandClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (window.location.pathname !== "/") return;
+  e.preventDefault();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function FooterColumn({
   heading,
   links,
@@ -132,8 +142,13 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-x-8 gap-y-14 lg:grid-cols-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-4">
-            <Link href="/" className="display-sm text-2xl text-ink">
-              Mass Fitness
+            <Link
+              href="/"
+              onClick={handleBrandClick}
+              className="flex items-center gap-2.5 text-2xl text-ink"
+            >
+              <LogoMark className="h-8" />
+              <span className="display-sm">Mass Fitness</span>
             </Link>
 
             <p className="mt-5 max-w-xs text-[0.9375rem] leading-relaxed text-muted">

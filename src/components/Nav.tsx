@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
+import { LogoMark } from "./Logo";
 import { scrollToFeatureCard } from "@/lib/featureScroll";
 
 const LINKS = [
@@ -59,6 +60,17 @@ export default function Nav() {
     };
   }, [open]);
 
+  // A same-page Link to "/" is a no-op in Next.js — nothing about the URL
+  // changes, so nothing happens, and clicking the logo while scrolled down
+  // reads as dead. Off the homepage the normal Link navigation already
+  // works, so this only needs to handle the case where we're already here.
+  const goHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    setOpen(false);
+    if (window.location.pathname !== "/") return;
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const go = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
     if (!href.startsWith("/#")) return;
@@ -85,10 +97,11 @@ export default function Nav() {
       <div className={`${island} px-4 py-2 sm:px-5 sm:py-2.5`}>
         <Link
           href="/"
-          onClick={() => setOpen(false)}
-          className="display-sm block text-base text-ink transition-opacity hover:opacity-70 sm:text-lg"
+          onClick={goHome}
+          className="flex items-center gap-2 text-base text-ink transition-opacity hover:opacity-70 sm:gap-2.5 sm:text-lg"
         >
-          Mass Fitness
+          <LogoMark className="h-5 sm:h-6" />
+          <span className="display-sm">Mass Fitness</span>
         </Link>
       </div>
 

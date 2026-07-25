@@ -5,6 +5,7 @@ const organizationSchema = {
   "@type": "Organization",
   name: "Mass Fitness",
   url: siteUrl,
+  logo: `${siteUrl}/logo/mf-mark-square.png`,
   slogan: "Your Body. Your Goals. Our Commitment.",
   description:
     "Live online fitness classes and structured home workout plans, coach-led and streamed in real time.",
