@@ -45,11 +45,18 @@ export default async function DashboardPage() {
           </h1>
         </div>
 
-        <form action={signOut}>
-          <button type="submit" className="btn btn-outline">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          {profile.role === "admin" && (
+            <Link href="/admin" className="btn btn-outline">
+              Admin
+            </Link>
+          )}
+          <form action={signOut}>
+            <button type="submit" className="btn btn-outline">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* MEMBERSHIP */}

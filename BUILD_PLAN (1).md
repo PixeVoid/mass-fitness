@@ -19,7 +19,7 @@ Last updated: 2026-07-25. Update this table in the same commit as the work it de
 | 3 — Subscriptions + PhonePe | ⬜ Not started | Schema and plan catalogue are ready for it. Blocked on merchant account + confirmed pricing. |
 | 4 — Live classes (LiveKit) | 🟡 Backend done | Token route with the paywall gate, plus a minimal viewer. Needs a real LiveKit project to test. |
 | 5 — Chatbot (Groq) | 🟡 Backend done | `/api/chat` streaming route. No chat UI widget yet — that is the remaining piece. |
-| 6 — Admin dashboard | ⬜ Not started | `profiles.role = 'admin'` and the `is_admin()` RLS helper exist to build on. |
+| 6 — Admin dashboard | ✅ Code complete | `/admin` — members (roles + manual membership grants), class scheduling, overview. Removes all the hand-written SQL except the first admin promotion. |
 | 7 — Flutter app prep | ⬜ Not started | — |
 
 ### Framework note (matters before writing any code)
@@ -34,10 +34,67 @@ The project is on **Next.js 16**, which is not the Next.js most training data de
 None of it is code — all of it is account setup, and nothing below can be done from a dev session.
 
 1. **Create the Supabase project**, then run `supabase/migrations/0001_init.sql` against it (SQL editor or `supabase db push`).
-2. **Enable Phone auth** in Supabase → Authentication → Providers, and connect an SMS provider (Twilio/MSG91). Phone OTP does nothing until an SMS provider is wired up, and Indian DLT registration takes time — start it early.
+2. **Enable Phone auth** in Supabase → Authentication → Providers. For testing you do **not** need a paid SMS provider — see Section 0.3.
 3. **Create a LiveKit Cloud project** for the URL, key and secret.
 4. **Get a Groq API key.**
 5. Copy `.env.example` → `.env.local` and fill it in. Same values go into Vercel's env settings for deploys.
+6. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
+   ```sql
+   update public.profiles set role = 'admin' where phone = '+91XXXXXXXXXX';
+   ```
+   Everything after that (trainers, memberships, classes) is done in `/admin`.
+
+---
+
+## 0.3 OTP delivery — options, costs, and what to do now
+
+**The honest headline: there is no 100% free, production-grade way to deliver OTPs to Indian phone numbers.** Not SMS, not WhatsApp. Anyone claiming otherwise is describing a trial credit, a rate-limited dev tier, or something that violates a provider's terms. Budget for it — but it is small, and it does not block a single day of building.
+
+### Right now: test numbers. Free, no provider, no code change.
+
+Supabase's Phone provider settings let you register **test phone numbers with fixed OTP codes**. The code is never sent anywhere — Supabase just accepts the one you configured. Look under Authentication → Providers → Phone (sometimes shown as "test OTP" or "test phone numbers").
+
+Register one number per role and the entire app becomes testable today, at zero cost:
+
+| Number | Code | Use for |
+|---|---|---|
+| `+919999900001` | `123456` | Normal customer |
+| `+919999900002` | `123456` | Trainer |
+| `+919999900003` | `123456` | Admin |
+
+Log in as each, promote the last one to admin with the SQL above, and every flow in this document — onboarding, the paywall, class scheduling, host vs viewer LiveKit tokens — can be exercised end to end. **Do this before paying anyone anything.** Remove the test numbers before launch; they are permanent backdoors otherwise.
+
+### For launch: the real options, ranked
+
+**1. WhatsApp OTP (recommended for this business).** Supabase supports WhatsApp as an OTP channel via Twilio Verify.
+
+- **Why it fits here specifically:** the landing page already sends people to WhatsApp (`wa.me/916207524549`). Customers are already reachable there, so an OTP arriving on WhatsApp is consistent rather than surprising. Delivery is also more reliable than Indian SMS, which gets filtered aggressively.
+- **No DLT registration.** This is the big practical win — DLT is the slow, bureaucratic part of Indian SMS.
+- **Not free.** Meta bills authentication-category template messages. In India these are usually cheaper per message than SMS, but check current rates — Meta has repriced this repeatedly.
+- **Setup cost:** a Meta Business account, WhatsApp Business API access, and template approval. Days, not hours. Start it early.
+
+**2. SMS via MSG91 or Twilio.** The conventional path.
+
+- MSG91 is India-local and generally cheaper for Indian numbers than Twilio.
+- **Requires TRAI DLT registration** — entity registration plus template approval, and it has a real lead time. This is the thing that will delay a launch if left late.
+
+**3. Email OTP as a free fallback.** The only genuinely free channel at this scale.
+
+- Supabase supports email OTP natively, and the auth code in `src/app/actions/auth.ts` is ~90% reusable — `signInWithOtp({ phone })` becomes `signInWithOtp({ email })`.
+- With your own SMTP (Resend, Brevo, or similar free tiers) the per-message cost at MVP volume is zero.
+- **Supabase's built-in email sender is rate-limited to a handful per hour and is explicitly not for production** — you must connect real SMTP.
+- **Cost:** phone number capture. The current design makes the phone number the account key, which is exactly what customer support wants to search by. Going email-primary means collecting the phone separately, as an ordinary profile field, and losing the guarantee that it is verified.
+- **This changes a locked decision** (Section 0: "Supabase Auth — Phone OTP"). Do not swap it silently — it needs an explicit call.
+
+### Do not do this
+
+**Unofficial WhatsApp libraries** (Baileys, whatsapp-web.js, and anything else that drives WhatsApp Web with a personal number). They are free and they work, right up until they don't. They violate WhatsApp's terms, and the penalty is a permanent ban of the number — which, for this business, is the number printed on the landing page and used for actual customer conversations. The downside is losing your primary customer channel to save a few hundred rupees a month.
+
+**Firebase Phone Auth** has a free quota, but it means running a second auth system alongside Supabase — two user tables, two session models, and the `profiles.id → auth.users.id` foreign key this whole schema is built on stops meaning anything. Not worth it.
+
+### Recommendation
+
+Test numbers now; WhatsApp via Twilio Verify at launch; keep email OTP in the back pocket as a fallback channel if WhatsApp approval drags. Phone stays the account key either way.
 
 ---
 
@@ -271,9 +328,29 @@ Not built: class scheduling UI — that is Phase 6. Until then, insert rows by h
 
 **Known limit:** the rate limiter is in-process memory (`src/lib/rate-limit.ts`). On Vercel each lambda has its own map, so the real ceiling is roughly 20 × concurrent instances, and it resets on cold start. Fine against a signed-in member; inadequate if the bot is ever opened to anonymous users — move it to Upstash Redis at that point.
 
-### Phase 6 — Admin / support dashboard — ⬜ not started
+### Phase 6 — Admin / support dashboard — ✅ code complete
 - Protected route (admin role check) listing: signups (`profiles`), subscription status (`subscriptions`), and a way to see/manage `classes`.
 - This is the tool customer support actually uses day-to-day — keep it functional over pretty.
+
+**What was built**
+
+| Route | Does |
+|---|---|
+| `/admin` | Counts (signups, active memberships, upcoming classes) + latest signups. |
+| `/admin/members` | Every member with their current plan. Set role (member/trainer/admin); grant a membership recording what was actually collected; cancel one. |
+| `/admin/classes` | Schedule a class (title, time, duration, trainer, members-only) and move it through scheduled → live → ended, or cancel it. |
+
+**Decisions worth knowing:**
+
+- **Reads use the *user's* client, not the service role.** The admin's own RLS still applies — `is_admin()` is what widens `profiles` and `subscriptions` to every row. A bug that let a non-admin reach that code returns an empty list rather than the whole member table. The service role is used only for writes RLS has no policy for: role changes (pinned) and subscriptions (read-only to users).
+- **`requireAdmin()` is called by every page *and* every action.** A Server Action is a public endpoint; "only admins see the button" protects nothing.
+- **Non-admins get `notFound()`, not a 403.** An admin area that announces its own existence to every logged-in member is an invitation to go looking.
+- **Granting a membership inserts, never edits.** History of what was given and when survives; `getActiveSubscription()` reads the latest-ending row, so a new grant supersedes an old one without deleting it.
+- **The amount field is editable and defaults to the catalogue price.** Until PhonePe lands, money arrives over UPI or in cash for whatever was agreed — the record should say what was actually collected, not what the price list says. Set 0 for a comp.
+
+**Verified against a real Postgres** with a stand-in for Supabase's `auth` schema: an admin sees all profiles and can create/update classes through RLS; a trainer sees only their own profile and is refused both; the grant → member-sees-it → cancel → member-loses-it cycle works; an invalid `plan_tier` is refused by the check constraint.
+
+**Remaining:** the first admin promotion is still raw SQL, unavoidably — the thing that grants admin *is* the admin panel. One `update` statement, once. See Section 0.3.
 
 ### Phase 7 — Prep for mobile app
 - Once web is stable, the Supabase backend (auth, DB schema, payment logic, LiveKit rooms) is reused as-is for a Flutter app. Only the UI layer gets rebuilt in Flutter.
@@ -384,9 +461,9 @@ Original spec:
 
 **New flags raised by the backend work:**
 
-7. **SMS provider for phone OTP.** Supabase Auth needs Twilio/MSG91 connected before a single code sends, and Indian DLT template registration has a lead time. This gates all of Phase 2 actually working — worth starting before it becomes the blocker.
-8. **Who is a trainer?** `profiles.role` and `classes.trainer_id` exist, but there is no UI to set either. Until Phase 6, promoting a trainer or admin is a manual SQL update (`supabase/seed.sql` shows the statement).
-9. **Subscription expiry sweep.** Nothing currently moves a subscription from `active` to `expired` when its term ends. Access checks compare against `end_date` so an expired member is correctly locked out regardless — but the `status` column will drift from reality, which will mislead whoever reads the admin dashboard. A Supabase scheduled function (pg_cron) should flip them; worth doing in Phase 3 alongside the payment writes.
+7. **OTP delivery channel for launch.** Testing is unblocked for free via test numbers — see **Section 0.3** for the full comparison. The decision needed is WhatsApp (recommended) vs SMS vs email-as-fallback, and it needs making early because both WhatsApp approval and SMS DLT registration have lead times measured in days.
+8. ~~Who is a trainer?~~ — resolved. `/admin/members` sets roles and `/admin/classes` assigns trainers. Only the first admin promotion still needs SQL.
+9. **Subscription expiry sweep.** Nothing currently moves a subscription from `active` to `expired` when its term ends. Access checks compare against `end_date` so an expired member is correctly locked out regardless — but the `status` column will drift from reality, and the admin dashboard reads `status`, so it will overstate active memberships. A `pg_cron` job should flip them; worth doing in Phase 3 alongside the payment writes.
 
 ---
 
@@ -397,10 +474,11 @@ Phases 4 and 5 are independent of each other and could be reordered or paralleli
 
 ### Recommended next steps
 
-The code is ahead of the accounts. The highest-value next move is not more code — it is standing up the Supabase project and SMS provider so Phase 2 can actually be tested end to end, because everything downstream (payments, live classes, chat) authenticates through it.
+The code is now ahead of the accounts in every direction. Nothing further is worth building until the app has been run against a real Supabase project once — and that no longer costs anything, because test OTP numbers remove the SMS provider from the critical path (Section 0.3).
 
-1. **Stand up the accounts** (Supabase + SMS provider, LiveKit, Groq), run the migration, fill `.env.local`. Then walk the flow: log in by OTP → land on `/onboarding` → `/dashboard`.
-2. **Grant yourself a subscription by hand** (`supabase/seed.sql`) and confirm a seeded class unlocks — then revoke it and confirm the 403. That single test exercises the whole paywall.
-3. **Phase 6 before Phase 3.** The admin dashboard is small, unblocked, and removes the hand-written SQL from steps 1–2. Phase 3 is blocked on the merchant account and the remaining prices anyway.
-4. **Then Phase 3 (payments)**, once the merchant account and quarterly/annual pricing land.
-5. **The chat widget** whenever — `/api/chat` is waiting for a consumer, and it is a self-contained piece of UI work.
+1. **Stand up Supabase**, run the migration, register three test phone numbers, fill `.env.local`. Promote yourself to admin with the one SQL statement.
+2. **Walk all three roles.** Log in as the customer → onboard → dashboard. Promote the second number to trainer in `/admin/members`. Schedule a class in `/admin/classes` assigned to that trainer. Confirm the customer sees "Members only", grant them a membership, confirm it unlocks, cancel it, confirm it re-locks. That sequence exercises the entire backend.
+3. **Add LiveKit** and repeat step 2's last part with a real join: trainer publishes, customer receives, and a customer with no membership is refused a token.
+4. **Start the WhatsApp Business / DLT paperwork** in parallel with all of the above. It is the longest-lead item and the only one that cannot be hurried at the end.
+5. **Then Phase 3 (payments)**, once the merchant account and quarterly/annual pricing land.
+6. **The chat widget** whenever — `/api/chat` is waiting for a consumer, and it is self-contained UI work.
