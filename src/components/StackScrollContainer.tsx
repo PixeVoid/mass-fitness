@@ -200,16 +200,16 @@ export default function StackScrollContainer() {
               y: heroY,
               pointerEvents: heroInteractive,
             }}
-            className="absolute inset-0 z-10 flex flex-col justify-center bg-paper px-6 pb-14 pt-24 sm:px-10 md:px-14 lg:px-16"
+            className="absolute inset-0 z-10 flex flex-col justify-center bg-paper px-6 pb-8 pt-20 sm:px-10 sm:pb-14 sm:pt-24 md:px-14 lg:px-16"
           >
-            <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12">
+            <div className="grid w-full grid-cols-1 items-center gap-10 [zoom:0.76] sm:[zoom:1] lg:grid-cols-12">
               <div className="flex flex-col items-start lg:col-span-6">
                 <p className="label flex items-center gap-2.5 text-faint">
                   <span className="live-dot" aria-hidden="true" />
                   Live online classes
                 </p>
 
-                <h1 className="display mt-7 text-[2.75rem] text-ink sm:text-[3.75rem] lg:text-[4.75rem]">
+                <h1 className="display mt-5 text-[2.15rem] text-ink sm:mt-7 sm:text-[3.75rem] lg:text-[4.75rem]">
                   <span className="brand-mark">Fitness from home.</span>
                   <br />
                   Coached like <em>you&rsquo;re</em>
@@ -217,12 +217,12 @@ export default function StackScrollContainer() {
                   in the room.
                 </h1>
 
-                <p className="mt-7 max-w-md text-[0.9375rem] leading-relaxed text-muted sm:text-base">
+                <p className="mt-4 max-w-md text-[0.9375rem] leading-relaxed text-muted sm:mt-7 sm:text-base">
                   Coach-led live sessions and structured home programmes. Real
                   feedback on real form, streamed to your phone or laptop.
                 </p>
 
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-6 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
                   <Link href="/assessment" className="btn btn-ai">
                     Get your AI assessment
                   </Link>
@@ -271,7 +271,7 @@ export default function StackScrollContainer() {
             style={{ opacity: consoleOpacity, pointerEvents: consoleInteractive }}
             className={`${cardShell} z-20`}
           >
-            <div className="relative flex h-full w-full flex-col p-2 sm:p-4 lg:p-6">
+            <div className="relative flex h-full w-full flex-col p-2 [zoom:0.76] sm:p-4 sm:[zoom:1] lg:p-6">
               <div className="flex w-full items-center justify-between overflow-hidden">
                 <div className="grid">
                   {stages.map((s) => (
@@ -298,7 +298,7 @@ export default function StackScrollContainer() {
                 </div>
               </div>
 
-              <div className="my-auto grid grid-cols-1 items-center gap-10 py-6 lg:grid-cols-12 lg:gap-12">
+              <div className="mt-4 grid grid-cols-1 items-center gap-6 py-3 sm:mt-auto sm:mb-auto lg:grid-cols-12 lg:gap-12">
                 <div className="grid overflow-hidden lg:col-span-5">
                   {stages.map((s) => (
                     <motion.div

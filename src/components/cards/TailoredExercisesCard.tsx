@@ -15,15 +15,15 @@ export const tailoredExercisesMeta = {
 export function TailoredExercisesCopy() {
   return (
     <>
-      <h2 className="display text-[2rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
+      <h2 className="display text-[1.625rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
         Sessions that are <em>actually live.</em>
       </h2>
 
-      <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+      <p className="mt-4 max-w-md text-[0.9375rem] leading-relaxed text-muted sm:mt-6">
         Not a video you press play on. Your coach is watching the room, calling out the hip that&rsquo;s dropping, and holding the tempo.
       </p>
 
-      <div className="mt-9">
+      <div className="mt-6 sm:mt-9">
         <a href="#classes" className="btn btn-solid">
           See the schedule
         </a>
