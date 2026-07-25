@@ -122,8 +122,8 @@ export default function Nav() {
         <ThemeToggle />
 
         <Link
-          href="/#pricing"
-          onClick={(e) => go(e, "/#pricing")}
+          href="/login"
+          onClick={() => setOpen(false)}
           className="hidden rounded-full bg-inverse-bg px-5 py-2.5 text-[0.8125rem] font-medium text-inverse-fg transition-opacity duration-300 hover:opacity-80 sm:block"
         >
           Login
@@ -167,8 +167,8 @@ export default function Nav() {
             </Link>
           ))}
           <Link
-            href="/#pricing"
-            onClick={(e) => go(e, "/#pricing")}
+            href="/login"
+            onClick={() => setOpen(false)}
             className="btn btn-solid mt-3 w-full"
           >
             Login

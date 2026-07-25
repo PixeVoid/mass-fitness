@@ -285,6 +285,53 @@ body {
     border: 1px solid var(--line);
   }
 
+  /* --- Forms ------------------------------------------------------------
+     Auth and profile capture. Height matches .btn so a field sitting next to
+     a button lines up, and clears the 44px touch target minimum.
+     font-size stays at 16px: anything smaller makes iOS Safari zoom the
+     viewport on focus, which reads as a layout jump.                      */
+
+  .field {
+    display: block;
+    width: 100%;
+    min-height: 2.875rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.75rem;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1.4;
+    transition: border-color 0.3s var(--ease);
+  }
+
+  .field::placeholder {
+    color: var(--faint);
+  }
+
+  .field:focus {
+    outline: 2px solid var(--ink);
+    outline-offset: -1px;
+    border-color: var(--ink);
+  }
+
+  .field[aria-invalid="true"] {
+    border-color: #d64545;
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  .field-error {
+    margin-top: 0.5rem;
+    color: #d64545;
+    font-size: 0.8125rem;
+  }
+
   /* --- Theme toggle icons -----------------------------------------------
      Which glyph shows is decided in CSS by the same selectors that pick the
      palette, so the button is already correct in server-rendered HTML.     */
