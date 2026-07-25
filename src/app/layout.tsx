@@ -41,6 +41,19 @@ const jetbrainsMono = localFont({
   display: "swap",
 });
 
+// Matches the stencil-cut lettering in the brand's logo animation (see
+// Logo.tsx) — used only for the brand name itself and the hero headline,
+// not as a general display face. Ships one static black weight; the family
+// has no real lowercase design (stencils are cut for caps), so anywhere
+// this is used pairs it with uppercase text.
+const bigShouldersStencil = localFont({
+  src: "../../public/fonts/BigShouldersStencilDisplay-Black.ttf",
+  variable: "--font-stencil",
+  weight: "900",
+  style: "normal",
+  display: "swap",
+});
+
 const siteUrl = "https://massfitness.in";
 
 export const metadata: Metadata = {
@@ -108,7 +121,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${instrument.variable} ${inter.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${instrument.variable} ${inter.variable} ${jetbrainsMono.variable} ${bigShouldersStencil.variable} h-full`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

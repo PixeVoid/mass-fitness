@@ -148,7 +148,7 @@ export default function Footer() {
               className="flex items-center gap-2.5 text-2xl text-ink"
             >
               <LogoMark className="h-8" />
-              <span className="display-sm">Mass Fitness</span>
+              <span className="brand-mark">Mass Fitness</span>
             </Link>
 
             <p className="mt-5 max-w-xs text-[0.9375rem] leading-relaxed text-muted">

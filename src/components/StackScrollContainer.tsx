@@ -202,7 +202,7 @@ export default function StackScrollContainer() {
                 </p>
 
                 <h1 className="display mt-7 text-[2.75rem] text-ink sm:text-[3.75rem] lg:text-[4.75rem]">
-                  Work<span className="line-through decoration-4">out</span> from home.
+                  <span className="brand-mark">Fitness from home.</span>
                   <br />
                   Coached like <em>you&rsquo;re</em>
                   <br />
