@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
+import { scrollToFeatureCard } from "@/lib/featureScroll";
 
 const LINKS = [
   { href: "/#features", label: "Features" },
@@ -61,7 +62,15 @@ export default function Nav() {
   const go = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
     if (!href.startsWith("/#")) return;
-    const target = document.getElementById(href.slice(2));
+    const slug = href.slice(2);
+
+    if (slug === "features") {
+      e.preventDefault();
+      scrollToFeatureCard(1);
+      return;
+    }
+
+    const target = document.getElementById(slug);
     if (!target) return;
     e.preventDefault();
     target.scrollIntoView({ behavior: "smooth" });
@@ -117,7 +126,7 @@ export default function Nav() {
           onClick={(e) => go(e, "/#pricing")}
           className="hidden rounded-full bg-inverse-bg px-5 py-2.5 text-[0.8125rem] font-medium text-inverse-fg transition-opacity duration-300 hover:opacity-80 sm:block"
         >
-          Start training
+          Login
         </Link>
 
         <button
@@ -162,7 +171,7 @@ export default function Nav() {
             onClick={(e) => go(e, "/#pricing")}
             className="btn btn-solid mt-3 w-full"
           >
-            Start training
+            Login
           </Link>
         </div>
       )}

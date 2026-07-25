@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { scrollToFeatureSlug } from "@/lib/featureScroll";
 
 const COMPANY_LINKS = [
   { href: "/about", label: "About us" },
@@ -9,11 +12,11 @@ const COMPANY_LINKS = [
 ];
 
 const PROGRAM_LINKS = [
-  { href: "/#features", label: "Fitness plan setup" },
+  { href: "/#your-plan", label: "Fitness plan setup" },
   { href: "/#classes", label: "Live online classes" },
-  { href: "/#features", label: "Home workouts" },
-  { href: "/#features", label: "Expert trainers" },
-  { href: "/#features", label: "Workout library" },
+  { href: "/#library", label: "Home workouts" },
+  { href: "/#coaches", label: "Expert trainers" },
+  { href: "/#library", label: "Workout library" },
 ];
 
 const LEGAL_LINKS = [
@@ -73,6 +76,20 @@ const APP_LINKS = [
   { href: "https://play.google.com", top: "Get it on", name: "Google Play" },
 ];
 
+// A card in the hero scroll-stack has no real document position of its own,
+// so a plain hash link would just land at the top of the stack. Where the
+// href names one of those cards, resolve it with the shared scroll helper
+// instead of letting the browser jump to a nonexistent anchor.
+function handleFooterLinkClick(
+  e: React.MouseEvent<HTMLAnchorElement>,
+  href: string,
+) {
+  if (!href.startsWith("/#")) return;
+  if (scrollToFeatureSlug(href.slice(2))) {
+    e.preventDefault();
+  }
+}
+
 function FooterColumn({
   heading,
   links,
@@ -86,7 +103,11 @@ function FooterColumn({
       <ul className="mt-6 flex flex-col items-start gap-3.5" role="list">
         {links.map((link) => (
           <li key={`${link.href}-${link.label}`}>
-            <Link href={link.href} className="link text-sm">
+            <Link
+              href={link.href}
+              onClick={(e) => handleFooterLinkClick(e, link.href)}
+              className="link text-sm"
+            >
               {link.label}
             </Link>
           </li>

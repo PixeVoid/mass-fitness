@@ -9,6 +9,7 @@ import CustomizedWorkoutsCard from "./cards/CustomizedWorkoutsCard";
 import TopCoachesCard from "./cards/TopCoachesCard";
 import EndlessWorkoutsCard from "./cards/EndlessWorkoutsCard";
 import CursorBlob from "./CursorBlob";
+import { scrollToFeatureCard, scrollToFeatureSlug } from "@/lib/featureScroll";
 
 const CARDS = [
   "Overview",
@@ -18,8 +19,6 @@ const CARDS = [
   "Progress",
   "Library",
 ];
-
-const CARD_TARGET_PROGRESS = [0.0, 0.2, 0.4, 0.6, 0.8, 0.95];
 
 export default function StackScrollContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,6 +40,17 @@ export default function StackScrollContainer() {
     });
     return () => unsubscribe();
   }, [scrollYProgress]);
+
+  // Landing on this page from elsewhere (e.g. a footer link on a legal page)
+  // arrives as a plain "/#slug" navigation — there's no real element at that
+  // id to scroll to, so once the stack has laid out we resolve the hash the
+  // same way an in-page click would.
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    const frame = requestAnimationFrame(() => scrollToFeatureSlug(hash));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // Card 0 recedes rather than simply fading — it reads as being pushed back
   // into the stack by the card arriving over it.
@@ -68,22 +78,11 @@ export default function StackScrollContainer() {
   // everything beneath it — hence no opacity track, only the slide.
   const card5Y = useTransform(scrollYProgress, [0.82, 0.93], ["100%", "0%"]);
 
-  const scrollToCard = (index: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const containerTop = container.getBoundingClientRect().top + window.scrollY;
-    const containerHeight = container.clientHeight - window.innerHeight;
-    window.scrollTo({
-      top: containerTop + containerHeight * CARD_TARGET_PROGRESS[index],
-      behavior: "smooth",
-    });
-  };
-
   const cardShell =
     "absolute inset-0 overflow-hidden bg-surface px-4 pb-12 pt-20 sm:px-8 sm:pb-16 sm:pt-24 lg:px-12";
 
   return (
-    <div ref={containerRef} className="relative h-[520vh] w-full">
+    <div ref={containerRef} id="features-stack" className="relative h-[520vh] w-full">
       <div className="sticky top-2 flex h-[calc(100vh-1rem)] w-full flex-col overflow-hidden rounded-[28px] border border-line bg-paper sm:top-3 sm:h-[calc(100vh-1.5rem)] sm:rounded-[36px]">
         <CursorBlob />
 
@@ -114,16 +113,12 @@ export default function StackScrollContainer() {
                 </p>
 
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <a href="#contact" className="btn btn-outline">
+                    Get your AI assessment
+                  </a>
                   <a href="#pricing" className="btn btn-solid">
                     Start training
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => scrollToCard(1)}
-                    className="btn btn-outline"
-                  >
-                    Explore features
-                  </button>
                 </div>
               </div>
 
@@ -181,7 +176,7 @@ export default function StackScrollContainer() {
               <button
                 key={label}
                 type="button"
-                onClick={() => scrollToCard(idx)}
+                onClick={() => scrollToFeatureCard(idx)}
                 aria-label={`Go to ${label}`}
                 aria-current={isActive ? "true" : undefined}
                 className="group relative flex items-center justify-center p-1.5"

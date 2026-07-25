@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 export default function TermsAndConditionsPage() {
   return (
     <LegalPage title="Terms & Conditions" meta="Last updated: January 2026 · Effective date: August 2025">
-      <p className="text-[15px] text-white/55 leading-relaxed mb-10">
+      <p className="text-[15px] text-muted leading-relaxed mb-10">
         This document is an electronic record under the Information Technology Act, 2000 and does not require a physical or digital signature. The Platform is owned and operated by{" "}
-        <strong className="text-white/80">Siddhant Sawan</strong>, registered at{" "}
-        <strong className="text-white/80">Sardar Patel Colony, Patna, Bihar, India</strong>. By using massfitness.in (the &ldquo;Platform&rdquo;), you agree to the terms below.
+        <strong className="text-ink">Siddhant Sawan</strong>, registered at{" "}
+        <strong className="text-ink">Sardar Patel Colony, Patna, Bihar, India</strong>. By using massfitness.in (the &ldquo;Platform&rdquo;), you agree to the terms below.
       </p>
 
       <Section index="01" title="Eligibility">
