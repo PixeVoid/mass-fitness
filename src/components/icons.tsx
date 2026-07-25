@@ -149,3 +149,22 @@ export function StopwatchIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function StarIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.6l-5.1 2.6 1-5.7-4.1-4 5.7-.8L12 3.5Z" />
+    </Svg>
+  );
+}
+
+/** Side-bend stretch — used for mobility work, the one class type none of the
+ * other icons (strength, HIIT, conditioning) already cover. */
+export function StretchIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12.5" cy="4.2" r="1.6" />
+      <path d="M12.3 6.3v5.2M12.3 8.3l-4 2.6M12.3 7.8l4.8-1.6M12.3 11.5l-3 6.2M12.3 11.5l4 5.4" />
+    </Svg>
+  );
+}

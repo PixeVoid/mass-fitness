@@ -1,3 +1,10 @@
+import {
+  BoltIcon,
+  DumbbellIcon,
+  HeartPulseIcon,
+  StretchIcon,
+} from "./icons";
+
 const CLASSES = [
   {
     name: "Strength",
@@ -5,6 +12,7 @@ const CLASSES = [
     kit: "Dumbbells",
     level: "All levels",
     blurb: "Progressive overload on the compound patterns — squat, hinge, push, pull.",
+    icon: DumbbellIcon,
   },
   {
     name: "HIIT",
@@ -12,6 +20,7 @@ const CLASSES = [
     kit: "No equipment",
     level: "Intermediate",
     blurb: "Short work windows, high density. The fastest conditioning stimulus we run.",
+    icon: BoltIcon,
   },
   {
     name: "Mobility",
@@ -19,6 +28,7 @@ const CLASSES = [
     kit: "Mat only",
     level: "All levels",
     blurb: "Hips, thoracic spine, ankles. The session that keeps the other three available.",
+    icon: StretchIcon,
   },
   {
     name: "Conditioning",
@@ -26,6 +36,7 @@ const CLASSES = [
     kit: "Optional bands",
     level: "All levels",
     blurb: "Aerobic base plus intervals — the engine everything else runs on.",
+    icon: HeartPulseIcon,
   },
 ];
 
@@ -42,9 +53,19 @@ export default function ClassGrid() {
             href="#pricing"
             className="group grid grid-cols-1 items-baseline gap-x-8 gap-y-4 border-t border-line py-8 transition-colors duration-500 hover:bg-overlay sm:py-10 lg:grid-cols-12"
           >
-            <h3 className="display-sm text-[1.75rem] text-ink transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1.5 sm:text-[2.125rem] lg:col-span-4">
-              {item.name}
-            </h3>
+            <div className="flex items-center gap-4 self-center lg:col-span-4">
+              <span
+                aria-hidden="true"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-sunk text-muted transition-colors duration-500 group-hover:border-line-strong group-hover:text-ink"
+              >
+                <span className="block h-5 w-5">
+                  <item.icon />
+                </span>
+              </span>
+              <h3 className="display-sm text-[1.75rem] text-ink transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1.5 sm:text-[2.125rem]">
+                {item.name}
+              </h3>
+            </div>
 
             <p className="max-w-sm text-[0.9375rem] leading-relaxed text-muted lg:col-span-5">
               {item.blurb}

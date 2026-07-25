@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, useScroll, useTransform, type MotionValue } from "framer-motion";
 import HeroCanvas from "./HeroCanvas";
 import { Phone } from "./cards/CardFrame";
@@ -30,6 +31,7 @@ import {
 } from "./cards/CustomizedWorkoutsCard";
 import EndlessWorkoutsCard from "./cards/EndlessWorkoutsCard";
 import CursorBlob from "./CursorBlob";
+import { DumbbellIcon, StopwatchIcon, UsersIcon } from "./icons";
 import {
   scrollToFeatureCard,
   scrollToFeatureSlug,
@@ -45,6 +47,12 @@ const CARDS = [
   "Coaches",
   "Progress",
   "Library",
+];
+
+const HERO_FACTS = [
+  { label: "25–45 min", icon: StopwatchIcon },
+  { label: "All levels", icon: UsersIcon },
+  { label: "Minimal kit", icon: DumbbellIcon },
 ];
 
 type StageMotion = {
@@ -215,16 +223,42 @@ export default function StackScrollContainer() {
                 </p>
 
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <a href="#contact" className="btn btn-outline">
+                  <Link href="/assessment" className="btn btn-ai">
                     Get your AI assessment
-                  </a>
+                  </Link>
                   <a href="#pricing" className="btn btn-solid">
                     Start training
                   </a>
                 </div>
+
+                {/* What a session actually costs you, in time and kit.
+                    Gated on height as well as width: the panel above is
+                    overflow-hidden, so content past the budget is clipped
+                    rather than scrolled, and this strip is what tips a ~720px
+                    laptop over. Width alone is not enough of a proxy — plenty
+                    of wide screens are short. */}
+                <ul className="mt-10 hidden w-full max-w-md items-center gap-7 border-t border-line pt-6 [@media(min-width:1024px)_and_(min-height:800px)]:flex">
+                  {HERO_FACTS.map((fact) => (
+                    <li
+                      key={fact.label}
+                      className="label flex items-center gap-2.5 text-faint"
+                    >
+                      <span aria-hidden="true" className="block h-4 w-4">
+                        <fact.icon />
+                      </span>
+                      {fact.label}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="relative hidden h-[300px] w-full sm:h-[400px] lg:col-span-6 lg:block lg:h-[520px]">
+              {/* Height drives how large the lifter renders: the camera's fov
+                  is vertical, so world-space width follows the aspect ratio but
+                  height does not. A fixed 520px box in a ~790px panel was
+                  leaving most of the column empty. vh-relative with a cap keeps
+                  it filling tall viewports without overflowing short ones,
+                  where the copy column is the taller of the two anyway. */}
+              <div className="relative hidden w-full lg:col-span-6 lg:block lg:h-[min(72vh,800px)]">
                 <HeroCanvas />
               </div>
             </div>

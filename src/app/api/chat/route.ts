@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { getUser } from "@/lib/auth/dal";
 import { SYSTEM_PROMPT } from "@/lib/chat/prompt";
+import { streamCompletion } from "@/lib/chat/stream";
 import { serverEnv } from "@/lib/env";
 import { rateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -122,69 +123,6 @@ export async function POST(request: Request) {
       "Cache-Control": "no-store",
       // Stops nginx-style proxies from buffering the stream into one blob.
       "X-Accel-Buffering": "no",
-    },
-  });
-}
-
-/**
- * Turns the provider's SSE stream into plain text deltas, calling `onComplete`
- * with the full answer once upstream closes.
- */
-function streamCompletion(
-  body: ReadableStream<Uint8Array>,
-  onComplete: (answer: string) => Promise<void>,
-): ReadableStream<Uint8Array> {
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  const reader = body.getReader();
-
-  let buffer = "";
-  let answer = "";
-
-  return new ReadableStream({
-    async pull(controller) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        await onComplete(answer).catch((error) => {
-          // Logging is a side concern; never fail a delivered answer over it.
-          console.error("[chat] failed to log exchange", error);
-        });
-        controller.close();
-        return;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-
-      // SSE events are separated by a blank line; a chunk can split one in
-      // half, so the trailing partial stays in the buffer for the next read.
-      const events = buffer.split("\n\n");
-      buffer = events.pop() ?? "";
-
-      for (const event of events) {
-        for (const line of event.split("\n")) {
-          if (!line.startsWith("data:")) continue;
-
-          const data = line.slice(5).trim();
-          if (!data || data === "[DONE]") continue;
-
-          try {
-            const chunk = JSON.parse(data);
-            const delta = chunk?.choices?.[0]?.delta?.content;
-            if (typeof delta === "string" && delta) {
-              answer += delta;
-              controller.enqueue(encoder.encode(delta));
-            }
-          } catch {
-            // A malformed chunk is not worth killing a live answer over.
-          }
-        }
-      }
-    },
-    cancel(reason) {
-      // Client navigated away — stop pulling so we're not billed for tokens
-      // nobody will read.
-      void reader.cancel(reason);
     },
   });
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LogoMark } from "@/components/Logo";
 
 /**
  * Single-column frame for the auth and onboarding screens.
@@ -25,9 +26,10 @@ export default function AuthShell({
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16 sm:px-8 sm:py-24">
       <Link
         href="/"
-        className="display-sm text-lg text-ink transition-opacity hover:opacity-70"
+        className="flex items-center gap-2 text-ink transition-opacity hover:opacity-70"
       >
-        Mass Fitness
+        <LogoMark className="h-5" />
+        <span className="brand-mark text-lg">Mass Fitness</span>
       </Link>
 
       <div className="mt-12 sm:mt-16">

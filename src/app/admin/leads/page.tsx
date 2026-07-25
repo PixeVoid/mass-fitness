@@ -1,0 +1,71 @@
+import { listLeads } from "@/lib/admin/queries";
+import { requireAdmin } from "@/lib/auth/dal";
+import { formatClassTime } from "@/lib/classes";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminLeadsPage() {
+  await requireAdmin();
+  const leads = await listLeads();
+
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 className="display-sm text-[1.75rem] text-ink">Leads</h1>
+        <p className="label text-faint">{leads.length} shown</p>
+      </div>
+
+      <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-muted">
+        Visitors who ran the AI assessment on the landing page and left their
+        details. Follow up while the conversation is still fresh.
+      </p>
+
+      {leads.length === 0 ? (
+        <p className="mt-10 text-[0.9375rem] text-muted">
+          No leads yet.
+        </p>
+      ) : (
+        <ul className="mt-10">
+          {leads.map((lead) => (
+            <li
+              key={lead.id}
+              className="border-t border-line py-5 last:border-b"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <div>
+                  <p className="text-[0.9375rem] text-ink">{lead.name}</p>
+                  <p className="numeric mt-1 text-[0.8125rem] text-faint">
+                    <a href={`tel:${lead.phone}`} className="link text-ink">
+                      {lead.phone}
+                    </a>
+                    {lead.email && (
+                      <>
+                        {" "}
+                        &middot;{" "}
+                        <a
+                          href={`mailto:${lead.email}`}
+                          className="link text-ink"
+                        >
+                          {lead.email}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <p className="numeric text-[0.8125rem] text-faint">
+                  {formatClassTime(lead.created_at)}
+                </p>
+              </div>
+
+              {lead.summary && (
+                <p className="mt-3 max-w-2xl whitespace-pre-wrap text-[0.875rem] leading-relaxed text-muted">
+                  {lead.summary}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}

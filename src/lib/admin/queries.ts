@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { FitnessClass, Profile, Subscription } from "@/lib/db-types";
+import type { FitnessClass, Lead, Profile, Subscription } from "@/lib/db-types";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -81,6 +81,7 @@ export interface AdminStats {
   members: number;
   activeMembers: number;
   upcomingClasses: number;
+  newLeads: number;
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
@@ -88,7 +89,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   const now = new Date().toISOString();
 
   // `head: true` with an exact count fetches no rows — just the number.
-  const [members, activeMembers, upcomingClasses] = await Promise.all([
+  const [members, activeMembers, upcomingClasses, newLeads] = await Promise.all([
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase
       .from("subscriptions")
@@ -100,11 +101,25 @@ export async function getAdminStats(): Promise<AdminStats> {
       .select("*", { count: "exact", head: true })
       .in("status", ["scheduled", "live"])
       .gte("scheduled_at", now),
+    supabase.from("leads").select("*", { count: "exact", head: true }),
   ]);
 
   return {
     members: members.count ?? 0,
     activeMembers: activeMembers.count ?? 0,
     upcomingClasses: upcomingClasses.count ?? 0,
+    newLeads: newLeads.count ?? 0,
   };
+}
+
+/** Leads captured from the anonymous AI assessment flow, newest first. */
+export async function listLeads(limit = 100): Promise<Lead[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("leads")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return data ?? [];
 }

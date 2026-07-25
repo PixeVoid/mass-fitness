@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Row } from "./CardFrame";
+import { LeafIcon, StopwatchIcon } from "../icons";
 
 const TRAINERS = [
   {
@@ -54,7 +55,12 @@ export function TopCoachesBadges() {
         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-10 left-0 z-20 hidden w-52 flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">Included</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <LeafIcon />
+          </span>
+          Included
+        </p>
         <p className="text-xs text-ink">Smart nutrition</p>
         <p className="text-[11px] leading-snug text-muted">
           A diet plan built alongside your programme, not sold separately.
@@ -66,7 +72,12 @@ export function TopCoachesBadges() {
         transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
         className="absolute right-0 top-6 z-20 hidden flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">Avg. reply</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <StopwatchIcon />
+          </span>
+          Avg. reply
+        </p>
         <p className="numeric text-2xl text-ink">
           under 2<span className="text-base text-muted"> hrs</span>
         </p>

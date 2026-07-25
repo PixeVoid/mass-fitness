@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Row } from "./CardFrame";
+import { DumbbellIcon, TargetIcon } from "../icons";
 
 const ASSESSMENT = [
   { value: "5'11\", 140 lbs", label: "Body assessment", done: true },
@@ -44,7 +45,12 @@ export function CustomizedWorkoutsBadges() {
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-10 right-0 z-20 hidden w-52 flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">Adherence</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <TargetIcon />
+          </span>
+          Adherence
+        </p>
         <p className="numeric text-2xl text-ink">
           92<span className="text-base text-muted">%</span>
         </p>
@@ -58,7 +64,12 @@ export function CustomizedWorkoutsBadges() {
         transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
         className="absolute left-0 top-8 z-20 hidden flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">Back squat · 1RM</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <DumbbellIcon />
+          </span>
+          Back squat · 1RM
+        </p>
         <p className="numeric text-2xl text-ink">
           82.5<span className="text-base text-muted"> kg</span>
         </p>

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Row } from "./CardFrame";
+import { BoltIcon, DumbbellIcon } from "../icons";
 
 const BARS = [16, 28, 20, 40, 32];
 
@@ -58,7 +59,12 @@ export function FitnessJourneyBadges() {
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         className="absolute right-0 top-10 z-20 hidden w-40 flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">This week</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <BoltIcon />
+          </span>
+          This week
+        </p>
         <div className="flex h-10 items-end gap-1.5">
           {BARS.map((h, i) => (
             <span
@@ -76,7 +82,12 @@ export function FitnessJourneyBadges() {
         className="absolute bottom-6 right-2 z-20 hidden items-center rounded-full border border-line bg-surface py-2.5 pl-5 pr-6 shadow-[var(--shadow-soft)] lg:flex"
       >
         <div>
-          <p className="label text-faint">Legs · completed</p>
+          <p className="label flex items-center gap-2 text-faint">
+            <span aria-hidden="true" className="block h-3.5 w-3.5">
+              <DumbbellIcon />
+            </span>
+            Legs · completed
+          </p>
           <p className="numeric mt-1.5 text-xs text-ink">1h 30m</p>
         </div>
       </motion.div>
@@ -99,9 +110,14 @@ export function FitnessJourneyScreen() {
       </div>
 
       <div className="my-3 flex flex-1 flex-col justify-between rounded-2xl bg-inverse-bg p-4 text-inverse-fg">
-        <span className="label w-fit rounded-full border border-current px-2.5 py-1.5 opacity-60">
-          Beginner
-        </span>
+        <div className="flex items-start justify-between gap-3">
+          <span className="label w-fit rounded-full border border-current px-2.5 py-1.5 opacity-60">
+            Beginner
+          </span>
+          <span aria-hidden="true" className="block h-6 w-6 shrink-0 opacity-40">
+            <DumbbellIcon />
+          </span>
+        </div>
         <div>
           <h3 className="display-sm text-[1.375rem]">5-day strength boost</h3>
           <p className="mt-1.5 text-[11px] opacity-60">Full body conditioning</p>

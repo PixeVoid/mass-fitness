@@ -6,21 +6,36 @@ import SectionHeading from "@/components/SectionHeading";
 import StackScrollContainer from "@/components/StackScrollContainer";
 import StatRow from "@/components/StatRow";
 import { StructuredData } from "@/components/StructuredData";
+import {
+  DumbbellIcon,
+  StopwatchIcon,
+  TargetIcon,
+  UsersIcon,
+} from "@/components/icons";
 
 const STEPS = [
   {
     title: "Set your goal",
     body: "Tell us what you're training for — strength, fat loss, mobility, or general conditioning. We benchmark where you're starting from.",
+    icon: TargetIcon,
   },
   {
     title: "Get matched",
     body: "We slot you into live sessions and a home plan that fit your goal, your schedule, and the space you actually have.",
+    icon: UsersIcon,
   },
   {
     title: "Train and adjust",
     body: "Join from laptop or phone. Your coach corrects your setup, and the programme moves as you do.",
+    icon: StopwatchIcon,
   },
 ];
+
+const PLAN_ICONS = {
+  Group: UsersIcon,
+  "One-to-one": TargetIcon,
+  Squad: DumbbellIcon,
+} as const;
 
 const PLANS = [
   {
@@ -81,8 +96,18 @@ export default function Home() {
         {/* CLASSES */}
         <section
           id="classes"
-          className="mx-auto w-full max-w-[1400px] px-5 py-24 sm:px-8 sm:py-32 lg:px-12"
+          className="relative mx-auto w-full max-w-[1400px] overflow-hidden px-5 py-24 sm:px-8 sm:py-32 lg:px-12"
         >
+          {/* Oversized line-art dumbbell, kept at the same low-contrast
+              treatment as the footer's wordmark watermark — a visual anchor
+              for the one section that's literally a list of gym classes. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-16 -top-16 h-[22rem] w-[22rem] -rotate-12 text-ink opacity-[0.06] sm:h-[30rem] sm:w-[30rem]"
+          >
+            <DumbbellIcon />
+          </div>
+
           <SectionHeading
             label="The schedule"
             title={
@@ -110,9 +135,19 @@ export default function Home() {
                 style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
                 className="border-t border-line pt-8 sm:pt-10"
               >
-                <span className="label numeric text-faint">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="label numeric text-faint">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface-sunk text-muted"
+                  >
+                    <span className="block h-5 w-5">
+                      <step.icon />
+                    </span>
+                  </span>
+                </div>
                 <h3 className="display-sm mt-6 text-[1.5rem] text-ink sm:text-[1.75rem]">
                   {step.title}
                 </h3>
@@ -136,52 +171,65 @@ export default function Home() {
           />
 
           <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-3">
-            {PLANS.map((plan, index) => (
-              <div
-                key={plan.name}
-                data-reveal=""
-                style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
-                className={`plan flex flex-col p-8 sm:p-10 ${
-                  plan.featured ? "plan-featured" : ""
-                }`}
-              >
-                <div className="flex items-baseline justify-between gap-4">
-                  <h3 className="display-sm text-[1.75rem] text-ink">{plan.name}</h3>
-                  {plan.featured && (
-                    <span className="label text-faint">Most chosen</span>
-                  )}
-                </div>
-
-                <p className="mt-4 min-h-[3.25rem] max-w-xs text-[0.9375rem] leading-relaxed text-muted">
-                  {plan.summary}
-                </p>
-
-                <div className="mt-8 flex items-baseline gap-2">
-                  <span className="numeric text-4xl tracking-tight text-ink">
-                    {plan.price}
-                  </span>
-                  <span className="label text-faint">{plan.cadence}</span>
-                </div>
-
-                <ul className="mt-8 flex flex-1 flex-col gap-3 border-t border-line pt-8">
-                  {plan.perks.map((perk) => (
-                    <li
-                      key={perk}
-                      className="flex items-baseline gap-3 text-[0.9375rem] text-muted"
-                    >
-                      <span aria-hidden="true" className="text-faint">
-                        &mdash;
+            {PLANS.map((plan, index) => {
+              const PlanIcon = PLAN_ICONS[plan.name as keyof typeof PLAN_ICONS];
+              return (
+                <div
+                  key={plan.name}
+                  data-reveal=""
+                  style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
+                  className={`plan flex flex-col p-8 sm:p-10 ${
+                    plan.featured ? "plan-featured" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface-sunk text-muted"
+                      >
+                        <span className="block h-4 w-4">
+                          <PlanIcon />
+                        </span>
                       </span>
-                      <span>{perk}</span>
-                    </li>
-                  ))}
-                </ul>
+                      <h3 className="display-sm text-[1.75rem] text-ink">{plan.name}</h3>
+                    </div>
+                    {plan.featured && (
+                      <span className="label text-faint">Most chosen</span>
+                    )}
+                  </div>
 
-                <a href="#contact" className="btn plan-cta mt-10 w-full">
-                  Choose {plan.name.toLowerCase()}
-                </a>
-              </div>
-            ))}
+                  <p className="mt-4 min-h-[3.25rem] max-w-xs text-[0.9375rem] leading-relaxed text-muted">
+                    {plan.summary}
+                  </p>
+
+                  <div className="mt-8 flex items-baseline gap-2">
+                    <span className="numeric text-4xl tracking-tight text-ink">
+                      {plan.price}
+                    </span>
+                    <span className="label text-faint">{plan.cadence}</span>
+                  </div>
+
+                  <ul className="mt-8 flex flex-1 flex-col gap-3 border-t border-line pt-8">
+                    {plan.perks.map((perk) => (
+                      <li
+                        key={perk}
+                        className="flex items-baseline gap-3 text-[0.9375rem] text-muted"
+                      >
+                        <span aria-hidden="true" className="text-faint">
+                          &mdash;
+                        </span>
+                        <span>{perk}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <a href="#contact" className="btn plan-cta mt-10 w-full">
+                    Choose {plan.name.toLowerCase()}
+                  </a>
+                </div>
+              );
+            })}
           </div>
         </section>
 

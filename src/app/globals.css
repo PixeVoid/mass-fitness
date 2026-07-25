@@ -259,6 +259,38 @@ body {
     background: var(--overlay);
   }
 
+  /* --- AI CTA -------------------------------------------------------------
+     The one deliberate break from "flat, no glow, no gradient" above: the AI
+     assessment is a different kind of action (opens a chat, not a page
+     section) and earns a different affordance. A slow conic-gradient ring
+     reads as "something intelligent is in here" without adding a fill colour
+     the rest of the palette doesn't have. `--ai-angle` is a registered custom
+     property (declared in the KEYFRAMES section below, alongside its
+     @keyframes) so the browser can interpolate it — animating an
+     unregistered custom property just snaps between values.               */
+
+  .btn-ai {
+    position: relative;
+    border: 1px solid transparent;
+    color: var(--ink);
+    background:
+      linear-gradient(var(--paper), var(--paper)) padding-box,
+      conic-gradient(
+          from var(--ai-angle),
+          #5b8def,
+          #9b6bff,
+          #4fd8a3,
+          #5b8def
+        )
+        border-box;
+    animation: ai-border-spin 7s linear infinite;
+    transition: box-shadow 0.3s var(--ease);
+  }
+
+  .btn-ai:hover {
+    box-shadow: 0 0 0 4px var(--overlay);
+  }
+
   /* --- Pricing plans ----------------------------------------------------
      One plan carries the highlight by default. On a pointer device the
      highlight follows the cursor instead of staying pinned to the middle
@@ -513,6 +545,18 @@ body {
 /* ==========================================================================
    KEYFRAMES
    ========================================================================== */
+
+@property --ai-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes ai-border-spin {
+  to {
+    --ai-angle: 360deg;
+  }
+}
 
 @keyframes breathe {
   0% {

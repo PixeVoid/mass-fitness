@@ -11,10 +11,11 @@ export default async function AdminOverviewPage() {
 
   return (
     <>
-      <dl className="grid grid-cols-1 gap-px border-t border-line bg-line sm:grid-cols-3">
+      <dl className="grid grid-cols-1 gap-px border-t border-line bg-line sm:grid-cols-4">
         <Stat label="Signups" value={stats.members} />
         <Stat label="Active memberships" value={stats.activeMembers} />
         <Stat label="Upcoming classes" value={stats.upcomingClasses} />
+        <Stat label="AI assessment leads" value={stats.newLeads} />
       </dl>
 
       <section className="mt-14">

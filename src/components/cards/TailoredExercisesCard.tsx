@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Row } from "./CardFrame";
-import { PlayIcon } from "../icons";
+import { FlameIcon, PlayIcon } from "../icons";
 
 const AVATARS = ["RS", "MK", "AT"];
 
@@ -61,7 +61,12 @@ export function TailoredExercisesBadges() {
         transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-8 left-0 z-20 hidden max-w-[210px] flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-soft)] lg:flex"
       >
-        <p className="label text-faint">Streak</p>
+        <p className="label flex items-center gap-2 text-faint">
+          <span aria-hidden="true" className="block h-3.5 w-3.5">
+            <FlameIcon />
+          </span>
+          Streak
+        </p>
         <p className="numeric text-2xl text-ink">18 days</p>
         <p className="text-[11px] leading-snug text-muted">
           Longest run so far. Two more and you beat it.

@@ -26,7 +26,20 @@ type MuscleSegment = {
   rz?: number;
   rot?: number;
   weight?: number;
+  /** Fill the ellipse evenly instead of weighting toward its rim. */
+  solid?: boolean;
 };
+
+/**
+ * Radius falloff, as the exponent in `random() ** e`.
+ *
+ * `Math.sqrt` (e = 0.5) spreads points evenly over the ellipse's *area*, which
+ * makes every segment a solid blob — and overlapping blobs merge into one
+ * cloud with no edges. A smaller exponent pushes points toward the rim so each
+ * muscle group keeps an outline. Parts too small to have a meaningful rim opt
+ * out with `solid`.
+ */
+const SHELL_EXPONENT = 0.3;
 
 /**
  * Builds a realistic, massive 3D bodybuilder particle silhouette holding heavy dumbbells
@@ -45,11 +58,24 @@ function buildBodybuilderLifterPoints(count: number, random: () => number): Floa
     // --- FLEXED BICEPS & HANDS HOLDING HEAVY DUMBBELLS ---
     { cx: -0.82, cy: 0.82, rx: 0.22, ry: 0.32, rz: 0.22, rot: -0.5, weight: 2.5 }, // Left Flexed Bicep
     { cx: -0.68, cy: 0.52, rx: 0.16, ry: 0.26, rz: 0.18, rot: 0.4, weight: 2.0 },  // Left Forearm & Hand
-    { cx: -0.68, cy: 0.48, rx: 0.24, ry: 0.12, rz: 0.18, weight: 2.2 },            // Left Heavy Dumbbell Weight
 
     { cx: 0.82, cy: 0.82, rx: 0.22, ry: 0.32, rz: 0.22, rot: 0.5, weight: 2.5 },  // Right Flexed Bicep
     { cx: 0.68, cy: 0.52, rx: 0.16, ry: 0.26, rz: 0.18, rot: -0.4, weight: 2.0 }, // Right Forearm & Hand
-    { cx: 0.68, cy: 0.48, rx: 0.24, ry: 0.12, rz: 0.18, weight: 2.2 },           // Right Heavy Dumbbell Weight
+
+    // --- DUMBBELLS ---
+    // Previously these sat at cy 0.48 against a forearm centred at 0.52, with a
+    // footprint entirely inside it — so every particle was swallowed and the
+    // weights never rendered at all. Dropped to 0.22, just below the forearm's
+    // lower edge (0.26), and split into a bar with a plate at each end. Seen
+    // edge-on like this a dumbbell is unmistakable; the inner plates stop at
+    // ±0.46 against a torso reaching ±0.30, so they read as separate objects.
+    { cx: -0.68, cy: 0.22, rx: 0.17, ry: 0.022, rz: 0.045, weight: 0.4, solid: true },
+    { cx: -0.85, cy: 0.22, rx: 0.05, ry: 0.13, rz: 0.13, weight: 1.2, solid: true },
+    { cx: -0.51, cy: 0.22, rx: 0.05, ry: 0.13, rz: 0.13, weight: 1.2, solid: true },
+
+    { cx: 0.68, cy: 0.22, rx: 0.17, ry: 0.022, rz: 0.045, weight: 0.4, solid: true },
+    { cx: 0.85, cy: 0.22, rx: 0.05, ry: 0.13, rz: 0.13, weight: 1.2, solid: true },
+    { cx: 0.51, cy: 0.22, rx: 0.05, ry: 0.13, rz: 0.13, weight: 1.2, solid: true },
 
     // --- V-TAPER CHEST, LATS & 6-PACK ABS ---
     { cx: 0, cy: 0.92, rx: 0.52, ry: 0.28, rz: 0.26, weight: 3.0 },   // Massive Pectoral Chest
@@ -83,7 +109,7 @@ function buildBodybuilderLifterPoints(count: number, random: () => number): Floa
     }
 
     const angle = random() * Math.PI * 2;
-    const radius = Math.sqrt(random());
+    const radius = Math.pow(random(), seg.solid ? 0.5 : SHELL_EXPONENT);
     let x = Math.cos(angle) * radius * seg.rx;
     let y = Math.sin(angle) * radius * seg.ry;
     const z = (random() - 0.5) * (seg.rz || 0.22);
