@@ -68,11 +68,22 @@ export default function CardFrame({
  * viewport and width is derived from the aspect ratio, so it can never
  * overflow the sticky frame on a short laptop — a fixed pixel height would
  * spill out below ~760px tall.
+ *
+ * The inner screen is a grid rather than a flex column: in the scroll-stack,
+ * one Phone stays mounted for several stages and its screens are passed in
+ * as siblings stacked in the same grid cell, cross-fading in place instead
+ * of the whole device sliding off and a new one sliding in.
+ *
+ * Sizing steps up by breakpoint rather than one clamp() for every viewport —
+ * on mobile the copy column stacks above the phone inside the same
+ * fixed-height sticky panel, so the phone can't grow much without pushing
+ * content out; from sm up there's a two-column layout with room to spare, so
+ * that's where "bigger" actually shows up.
  */
 export function Phone({ children }: { children: ReactNode }) {
   return (
-    <div className="relative aspect-[9/17] h-[clamp(320px,56vh,560px)] shrink-0 rounded-[2.5rem] border border-line-strong bg-paper p-2.5 shadow-[var(--shadow-soft)] sm:rounded-[2.75rem]">
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-[2rem] border border-line bg-paper px-4 pb-4 pt-4 sm:rounded-[2.25rem]">
+    <div className="relative aspect-[9/17] h-[clamp(240px,38vh,320px)] shrink-0 rounded-[2.5rem] border border-line-strong bg-paper p-2.5 shadow-[var(--shadow-soft)] sm:h-[clamp(360px,58vh,520px)] sm:rounded-[3rem] lg:h-[clamp(400px,66vh,680px)]">
+      <div className="grid h-full w-full overflow-hidden rounded-[2rem] border border-line bg-paper sm:rounded-[2.5rem]">
         {children}
       </div>
     </div>

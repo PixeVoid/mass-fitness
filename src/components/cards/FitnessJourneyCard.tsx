@@ -1,34 +1,42 @@
 "use client";
 
 import { motion } from "framer-motion";
-import CardFrame, { Phone, Row } from "./CardFrame";
+import { Row } from "./CardFrame";
 
 const BARS = [16, 28, 20, 40, 32];
 
-export default function FitnessJourneyCard() {
+export const fitnessJourneyMeta = {
+  eyebrow: "Your plan",
+  index: 1,
+  visualLabel: "Member app — today's plan",
+};
+
+export function FitnessJourneyCopy() {
   return (
-    <CardFrame
-      eyebrow="Your plan"
-      index={1}
-      title={
-        <>
-          The plan starts <em>with you.</em>
-        </>
-      }
-      body="We benchmark where you're starting from, then build volume and progression around the days you can actually train."
-      visualLabel="Member app — today's plan"
-      action={
-        <div className="flex flex-wrap gap-3">
-          <a href="#pricing" className="btn btn-solid">
-            Get started
-          </a>
-          <a href="#classes" className="btn btn-outline">
-            Browse classes
-          </a>
-        </div>
-      }
-    >
-      {/* Floating: coach */}
+    <>
+      <h2 className="display text-[2rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
+        The plan starts <em>with you.</em>
+      </h2>
+
+      <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+        We benchmark where you&rsquo;re starting from, then build volume and progression around the days you can actually train.
+      </p>
+
+      <div className="mt-9 flex flex-wrap gap-3">
+        <a href="#pricing" className="btn btn-solid">
+          Get started
+        </a>
+        <a href="#classes" className="btn btn-outline">
+          Browse classes
+        </a>
+      </div>
+    </>
+  );
+}
+
+export function FitnessJourneyBadges() {
+  return (
+    <>
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -45,7 +53,6 @@ export default function FitnessJourneyCard() {
         </div>
       </motion.div>
 
-      {/* Floating: weekly volume */}
       <motion.div
         animate={{ y: [0, -10, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
@@ -63,7 +70,6 @@ export default function FitnessJourneyCard() {
         </div>
       </motion.div>
 
-      {/* Floating: session complete */}
       <motion.div
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
@@ -74,40 +80,44 @@ export default function FitnessJourneyCard() {
           <p className="numeric mt-1.5 text-xs text-ink">1h 30m</p>
         </div>
       </motion.div>
+    </>
+  );
+}
 
-      <Phone>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="label text-faint">Welcome back</p>
-            <p className="mt-1.5 text-sm text-ink">Hey, Janet</p>
-          </div>
-          <span
-            aria-hidden="true"
-            className="h-7 w-7 rounded-full border border-line bg-surface-sunk"
-          />
+export function FitnessJourneyScreen() {
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="label text-faint">Welcome back</p>
+          <p className="mt-1.5 text-sm text-ink">Hey, Janet</p>
         </div>
+        <span
+          aria-hidden="true"
+          className="h-7 w-7 rounded-full border border-line bg-surface-sunk"
+        />
+      </div>
 
-        <div className="my-3 flex flex-1 flex-col justify-between rounded-2xl bg-inverse-bg p-4 text-inverse-fg">
-          <span className="label w-fit rounded-full border border-current px-2.5 py-1.5 opacity-60">
-            Beginner
-          </span>
-          <div>
-            <h3 className="display-sm text-[1.375rem]">5-day strength boost</h3>
-            <p className="mt-1.5 text-[11px] opacity-60">Full body conditioning</p>
-          </div>
-          <span className="flex h-9 w-full items-center justify-center rounded-full border border-current/40 text-xs opacity-90">
-            Continue
-          </span>
+      <div className="my-3 flex flex-1 flex-col justify-between rounded-2xl bg-inverse-bg p-4 text-inverse-fg">
+        <span className="label w-fit rounded-full border border-current px-2.5 py-1.5 opacity-60">
+          Beginner
+        </span>
+        <div>
+          <h3 className="display-sm text-[1.375rem]">5-day strength boost</h3>
+          <p className="mt-1.5 text-[11px] opacity-60">Full body conditioning</p>
         </div>
+        <span className="flex h-9 w-full items-center justify-center rounded-full border border-current/40 text-xs opacity-90">
+          Continue
+        </span>
+      </div>
 
-        <Row>
-          <div>
-            <p className="label text-faint">Full body focus</p>
-            <p className="mt-1.5 text-xs text-ink">3 sessions this week</p>
-          </div>
-          <span className="numeric text-xs text-ink">75%</span>
-        </Row>
-      </Phone>
-    </CardFrame>
+      <Row>
+        <div>
+          <p className="label text-faint">Full body focus</p>
+          <p className="mt-1.5 text-xs text-ink">3 sessions this week</p>
+        </div>
+        <span className="numeric text-xs text-ink">75%</span>
+      </Row>
+    </>
   );
 }
