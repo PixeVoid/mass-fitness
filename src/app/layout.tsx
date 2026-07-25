@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Reveal from "@/components/Reveal";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 // Editorial display face. Ships regular + italic only — the italic is a true
 // cut, so it is safe to use for emphasis.
@@ -115,6 +116,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-paper text-ink">
         <Reveal />
         {children}
+        <ScrollToTopButton />
       </body>
     </html>
   );

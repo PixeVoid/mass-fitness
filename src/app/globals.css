@@ -33,6 +33,10 @@
   /* One easing for the whole site. Consistency here is most of what reads
      as "designed" in motion. */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Status dot accent — kept as its own token (rather than inlined in
+     .live-dot) since this is expected to be tuned per-status later. */
+  --live-dot-color: #22c55e;
 }
 
 /* Dark values live in a single place and are applied from two selectors:
@@ -315,7 +319,8 @@ body {
   }
 
   /* --- Live indicator ---------------------------------------------------
-     Monochrome: a dot with a slow breathing ring, no colour needed.       */
+     Coloured via --live-dot-color rather than currentColor, so status reads
+     at a glance instead of blending into the label text.                 */
 
   .live-dot {
     position: relative;
@@ -323,7 +328,7 @@ body {
     height: 6px;
     width: 6px;
     border-radius: 999px;
-    background: currentColor;
+    background: var(--live-dot-color);
   }
 
   .live-dot::after {
@@ -331,7 +336,7 @@ body {
     position: absolute;
     inset: -3px;
     border-radius: 999px;
-    border: 1px solid currentColor;
+    border: 1px solid var(--live-dot-color);
     opacity: 0;
     animation: breathe 2.8s var(--ease) infinite;
   }

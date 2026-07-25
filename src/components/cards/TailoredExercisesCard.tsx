@@ -1,30 +1,40 @@
 "use client";
 
 import { motion } from "framer-motion";
-import CardFrame, { Phone, Row } from "./CardFrame";
+import { Row } from "./CardFrame";
 import { PlayIcon } from "../icons";
 
 const AVATARS = ["RS", "MK", "AT"];
 
-export default function TailoredExercisesCard() {
+export const tailoredExercisesMeta = {
+  eyebrow: "Live classes",
+  index: 2,
+  visualLabel: "Member app — live class",
+};
+
+export function TailoredExercisesCopy() {
   return (
-    <CardFrame
-      eyebrow="Live classes"
-      index={2}
-      title={
-        <>
-          Sessions that are <em>actually live.</em>
-        </>
-      }
-      body="Not a video you press play on. Your coach is watching the room, calling out the hip that's dropping, and holding the tempo."
-      visualLabel="Member app — live class"
-      action={
+    <>
+      <h2 className="display text-[2rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
+        Sessions that are <em>actually live.</em>
+      </h2>
+
+      <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+        Not a video you press play on. Your coach is watching the room, calling out the hip that&rsquo;s dropping, and holding the tempo.
+      </p>
+
+      <div className="mt-9">
         <a href="#classes" className="btn btn-solid">
           See the schedule
         </a>
-      }
-    >
-      {/* Floating: social proof */}
+      </div>
+    </>
+  );
+}
+
+export function TailoredExercisesBadges() {
+  return (
+    <>
       <motion.div
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
@@ -46,7 +56,6 @@ export default function TailoredExercisesCard() {
         </div>
       </motion.div>
 
-      {/* Floating: consistency */}
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
@@ -58,37 +67,41 @@ export default function TailoredExercisesCard() {
           Longest run so far. Two more and you beat it.
         </p>
       </motion.div>
+    </>
+  );
+}
 
-      <Phone>
-        <div className="flex items-center gap-2 text-faint">
-          <span aria-hidden="true" className="text-xs">
-            &larr;
+export function TailoredExercisesScreen() {
+  return (
+    <>
+      <div className="flex items-center gap-2 text-faint">
+        <span aria-hidden="true" className="text-xs">
+          &larr;
+        </span>
+        <p className="label">Pick a class</p>
+      </div>
+
+      <div className="my-3 flex-1 overflow-hidden rounded-2xl bg-inverse-bg text-inverse-fg">
+        <div className="relative flex h-[58%] items-center justify-center border-b border-current/15">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-current/40 p-3.5">
+            <PlayIcon />
           </span>
-          <p className="label">Pick a class</p>
         </div>
-
-        <div className="my-3 flex-1 overflow-hidden rounded-2xl bg-inverse-bg text-inverse-fg">
-          <div className="relative flex h-[58%] items-center justify-center border-b border-current/15">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-current/40 p-3.5">
-              <PlayIcon />
+        <div className="p-3.5">
+          <h3 className="display-sm text-lg">HIIT fat burn</h3>
+          <div className="mt-2.5 flex items-center justify-between">
+            <span className="label opacity-55">25 min</span>
+            <span className="label flex items-center gap-1.5 opacity-90">
+              <span className="live-dot" aria-hidden="true" />
+              Live
             </span>
           </div>
-          <div className="p-3.5">
-            <h3 className="display-sm text-lg">HIIT fat burn</h3>
-            <div className="mt-2.5 flex items-center justify-between">
-              <span className="label opacity-55">25 min</span>
-              <span className="label flex items-center gap-1.5 opacity-90">
-                <span className="live-dot" aria-hidden="true" />
-                Live
-              </span>
-            </div>
-          </div>
         </div>
+      </div>
 
-        <Row>
-          <p className="text-[11px] text-muted">12,400 members live today</p>
-        </Row>
-      </Phone>
-    </CardFrame>
+      <Row>
+        <p className="text-[11px] text-muted">12,400 members live today</p>
+      </Row>
+    </>
   );
 }

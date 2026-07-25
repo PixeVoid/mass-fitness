@@ -12,7 +12,7 @@ export default function RefundPolicyPage() {
   return (
     <LegalPage title="Refund Policy" meta="Last updated: January 2026 · Effective date: August 2025">
       <Callout>
-        <strong className="text-white">Important:</strong> At Mass Fitness, all sales are final and we do not offer refunds. By purchasing any programme, membership, or service, you acknowledge and agree to this policy.
+        <strong className="text-ink">Important:</strong> At Mass Fitness, all sales are final and we do not offer refunds. By purchasing any programme, membership, or service, you acknowledge and agree to this policy.
       </Callout>
 
       <Section index="01" title="No cancellation">
@@ -55,7 +55,7 @@ export default function RefundPolicyPage() {
             "Temporary programme pause (up to 7 days, subject to approval)",
           ]}
         />
-        <p className="text-sm text-white/35 pt-1">
+        <p className="text-sm text-faint pt-1">
           These accommodations do not constitute a right to refund or cancellation, and are granted entirely at our discretion.
         </p>
       </Section>

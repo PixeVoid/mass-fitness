@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function PrivacyPolicyPage() {
   return (
     <LegalPage title="Privacy Policy" meta="Last updated: January 2026 · Effective date: August 2025">
-      <p className="text-[15px] text-white/55 leading-relaxed mb-10">
+      <p className="text-[15px] text-muted leading-relaxed mb-10">
         This Privacy Policy governs how Mass Fitness (operated by Siddhant Sawan, registered at Sardar Patel Colony, Patna, Bihar) collects, uses, maintains, and discloses information from users of massfitness.in and the Mass Fitness application.
       </p>
 

@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 export default function DisclaimerPage() {
   return (
     <LegalPage title="Disclaimer" meta="Last updated: January 2026 · Effective date: August 2025">
-      <p className="text-[15px] text-white/55 leading-relaxed mb-10">
+      <p className="text-[15px] text-muted leading-relaxed mb-10">
         The information provided on massfitness.in — including training programmes, diet plans, fitness tips, workout videos, and all other content — is for{" "}
-        <strong className="text-white/80">educational and informational purposes only</strong>. Individual results may vary based on effort, body type, medical condition, age, and lifestyle.
+        <strong className="text-ink">educational and informational purposes only</strong>. Individual results may vary based on effort, body type, medical condition, age, and lifestyle.
       </p>
 
       <Section index="01" title="Consult a medical professional">
@@ -44,10 +44,10 @@ export default function DisclaimerPage() {
         <p>By enrolling in any programme, you agree to the following:</p>
         <List
           items={[
-            <span key="1"><strong className="text-white/80">No cancellation</strong> — once a programme is purchased and confirmed, it cannot be cancelled under any circumstances.</span>,
-            <span key="2"><strong className="text-white/80">No refunds</strong> — all payments for training programmes, diet plans, or memberships are non-refundable, including for personal reasons, schedule changes, or lack of participation.</span>,
-            <span key="3"><strong className="text-white/80">Non-transferable</strong> — programmes are tied to the enrolled individual and cannot be shifted to another person.</span>,
-            <span key="4"><strong className="text-white/80">Support</strong> — while cancellations and refunds aren&rsquo;t possible, we can help with rescheduling or alternate guidance in cases of genuine difficulty (travel or health issues).</span>,
+            <span key="1"><strong className="text-ink">No cancellation</strong> — once a programme is purchased and confirmed, it cannot be cancelled under any circumstances.</span>,
+            <span key="2"><strong className="text-ink">No refunds</strong> — all payments for training programmes, diet plans, or memberships are non-refundable, including for personal reasons, schedule changes, or lack of participation.</span>,
+            <span key="3"><strong className="text-ink">Non-transferable</strong> — programmes are tied to the enrolled individual and cannot be shifted to another person.</span>,
+            <span key="4"><strong className="text-ink">Support</strong> — while cancellations and refunds aren&rsquo;t possible, we can help with rescheduling or alternate guidance in cases of genuine difficulty (travel or health issues).</span>,
           ]}
         />
       </Section>
