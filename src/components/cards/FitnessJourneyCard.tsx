@@ -15,15 +15,15 @@ export const fitnessJourneyMeta = {
 export function FitnessJourneyCopy() {
   return (
     <>
-      <h2 className="display text-[2rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
+      <h2 className="display text-[1.625rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
         The plan starts <em>with you.</em>
       </h2>
 
-      <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+      <p className="mt-4 max-w-md text-[0.9375rem] leading-relaxed text-muted sm:mt-6">
         We benchmark where you&rsquo;re starting from, then build volume and progression around the days you can actually train.
       </p>
 
-      <div className="mt-9 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2.5 sm:mt-9 sm:gap-3">
         <a href="#pricing" className="btn btn-solid">
           Get started
         </a>

@@ -20,15 +20,15 @@ export const customizedWorkoutsMeta = {
 export function CustomizedWorkoutsCopy() {
   return (
     <>
-      <h2 className="display text-[2rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
+      <h2 className="display text-[1.625rem] text-ink sm:text-[2.75rem] lg:text-[3.25rem]">
         The programme <em>moves as you do.</em>
       </h2>
 
-      <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
+      <p className="mt-4 max-w-md text-[0.9375rem] leading-relaxed text-muted sm:mt-6">
         Load, volume and rest are re-cut against what you actually completed last week — not against the plan you were sold on day one.
       </p>
 
-      <div className="mt-9">
+      <div className="mt-6 sm:mt-9">
         <a href="#pricing" className="btn btn-solid">
           Build your plan
         </a>
