@@ -63,6 +63,12 @@ Why this ranks above phone OTP for this app specifically: **zero dependency on I
 
 **Email OTP:**
 - Supabase → Authentication → Providers → **Email** should already be enabled on a new project (screenshots during setup showed it "Enabled" by default). If not, toggle it on. Nothing else to configure for MVP volume — Supabase's built-in sender covers testing and early traffic.
+- **The email template must be edited before login works — this bit us on first test.** Supabase's default "Magic Link" template (Authentication → Email Templates → Magic Link) only renders `{{ .ConfirmationURL }}`, a clickable link. This app's UI asks the user to type in a 6-digit code, which Supabase generates regardless but never shows unless the template also includes `{{ .Token }}`. Add it to the template body, e.g.:
+  ```html
+  <h2>Your Mass Fitness login code</h2>
+  <p>Enter this code to sign in: <strong>{{ .Token }}</strong></p>
+  ```
+  The link can stay in the template too (`sendOtp` now passes `emailRedirectTo` pointing at `/auth/callback`, so clicking it works as an alternative to typing the code) — just don't rely on the link alone, since a codeless template leaves the user staring at an email with nothing to type in.
 - **Supabase's built-in email sender is rate-limited to a handful per hour and is explicitly not for production.** Once real signups start, connect real SMTP (Resend's free tier is 3,000/month) under Authentication → Providers → Email → SMTP Settings.
 
 **Google OAuth:**
@@ -322,6 +328,18 @@ Not built: class scheduling UI — that is Phase 6. Until then, insert rows by h
 **Remaining:** the chat UI widget. The route has no consumer yet.
 
 **Known limit:** the rate limiter is in-process memory (`src/lib/rate-limit.ts`). On Vercel each lambda has its own map, so the real ceiling is roughly 20 × concurrent instances, and it resets on cold start. Fine against a signed-in member; inadequate if the bot is ever opened to anonymous users — move it to Upstash Redis at that point.
+
+### Phase 5.5 — AI assessment (anonymous lead capture) — ✅ code complete
+Not in the original plan — added on request. The "Get your AI assessment" button on the landing hero opens `/assessment`: a short Groq-backed intake chat that needs no account, followed by a form (name, mobile, email, optional note) that writes to a new `leads` table.
+
+**What was built:**
+- `src/app/api/assessment/route.ts` — same streaming shape as `/api/chat` (factored into `src/lib/chat/stream.ts` so both share it), but **no auth check** and rate-limited by IP instead of user id (15 msgs / 10 min). Its own system prompt (`src/lib/chat/assessmentPrompt.ts`) runs an intake conversation and then hands off to the form rather than trying to collect contact details itself.
+- `src/app/api/leads/route.ts` — validates and writes to `leads` via the service role (no client insert policy, same pattern as `chat_logs`). IP rate-limited (5 / 10 min) plus a honeypot field.
+- `supabase/migrations/0003_leads.sql` — `leads` table, admin-readable via RLS (`is_admin()`), otherwise closed.
+- `/admin/leads` — new admin tab listing leads newest-first; overview stats gained an "AI assessment leads" count.
+- `.btn-ai` in `globals.css` — the one deliberate exception to "flat, no glow, no gradient": a slow rotating conic-gradient border on the CTA itself, via a registered `--ai-angle` custom property.
+
+**Known limit:** same in-process rate limiter as Phase 5, now actually exposed to anonymous traffic rather than just members — move to Upstash Redis if abuse shows up.
 
 ### Phase 6 — Admin / support dashboard — ✅ code complete
 - Protected route (admin role check) listing: signups (`profiles`), subscription status (`subscriptions`), and a way to see/manage `classes`.

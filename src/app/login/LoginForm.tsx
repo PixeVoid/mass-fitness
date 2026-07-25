@@ -51,6 +51,7 @@ export default function LoginForm({
       </div>
 
       <form action={sendAction} className="flex flex-col gap-5">
+        <input type="hidden" name="next" value={next} />
         <div>
           <label htmlFor="email" className="field-label">
             Email address

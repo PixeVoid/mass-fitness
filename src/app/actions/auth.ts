@@ -57,12 +57,24 @@ export async function sendOtp(
     };
   }
 
+  const next = safeRedirectTarget(String(formData.get("next") ?? ""));
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
-    // Signup and login are the same gesture for OTP — there is no password to
-    // set, so making the user pick a flow up front would be a false choice.
-    options: { shouldCreateUser: true },
+    options: {
+      // Signup and login are the same gesture for OTP — there is no
+      // password to set, so making the user pick a flow up front would be a
+      // false choice.
+      shouldCreateUser: true,
+      // Supabase's default "Magic Link" email template only shows the link,
+      // not the 6-digit code this UI actually asks for — that's a dashboard
+      // template edit, not something fixable here. This just makes the link
+      // work too, in case it's left in the template or a future template
+      // change starts pointing people at it: without an explicit
+      // emailRedirectTo, Supabase falls back to the project's bare Site URL
+      // instead of our callback route, and the session never gets set.
+      emailRedirectTo: `${publicEnv.siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
   });
 
   if (error) {
