@@ -224,7 +224,7 @@ export default function StackScrollContainer() {
 
                 <div className="mt-6 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
                   <Link href="/assessment" className="btn btn-ai">
-                    Get your AI assessment
+                    Get your fitness score
                   </Link>
                   <a href="#pricing" className="btn btn-solid">
                     Start training

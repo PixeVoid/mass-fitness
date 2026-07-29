@@ -12,6 +12,9 @@ import {
   TargetIcon,
   UsersIcon,
 } from "@/components/icons";
+import { formatPaise } from "@/lib/plans";
+import { getPlans } from "@/lib/pricing";
+import type { PlanTier } from "@/lib/db-types";
 
 const STEPS = [
   {
@@ -31,58 +34,18 @@ const STEPS = [
   },
 ];
 
-const PLAN_ICONS = {
-  Group: UsersIcon,
-  "One-to-one": TargetIcon,
-  Squad: DumbbellIcon,
-} as const;
+const PLAN_ICONS: Record<PlanTier, typeof UsersIcon> = {
+  group: UsersIcon,
+  one_to_one: TargetIcon,
+};
 
-const PLANS = [
-  {
-    name: "Group",
-    price: "₹1,499",
-    cadence: "per month",
-    summary: "Coached sessions with a room of people going through the same thing.",
-    perks: [
-      "Personalised diet plan",
-      "Home workout support",
-      "Group live sessions",
-      "Flexible timings",
-    ],
-    featured: false,
-  },
-  {
-    name: "One-to-one",
-    price: "₹2,999",
-    cadence: "per month",
-    summary: "The whole session is yours. Best if you're working around an injury or a deadline.",
-    perks: [
-      "Personalised diet plan",
-      "Progress tracking & monitoring",
-      "Gym + home programme",
-      "Direct trainer access",
-    ],
-    featured: true,
-  },
-  {
-    name: "Squad",
-    price: "₹1,199",
-    cadence: "per person / month",
-    summary: "Train with a partner. Cheaper than one-to-one, and far harder to skip.",
-    perks: [
-      "Minimum two people",
-      "Discounted coaching",
-      "Shared accountability",
-      "Community sessions",
-    ],
-    featured: false,
-  },
-];
+export default async function Home() {
+  const plans = await getPlans();
+  const monthlyPlans = plans.filter((plan) => plan.duration === "monthly");
 
-export default function Home() {
   return (
     <>
-      <StructuredData />
+      <StructuredData monthlyPlans={monthlyPlans} />
       <Nav />
 
       <main id="top" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
@@ -170,12 +133,12 @@ export default function Home() {
             body="No lock-in, no joining fee. Switch or cancel at the end of any month."
           />
 
-          <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-3">
-            {PLANS.map((plan, index) => {
-              const PlanIcon = PLAN_ICONS[plan.name as keyof typeof PLAN_ICONS];
+          <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-2">
+            {monthlyPlans.map((plan, index) => {
+              const PlanIcon = PLAN_ICONS[plan.tier];
               return (
                 <div
-                  key={plan.name}
+                  key={plan.tier}
                   data-reveal=""
                   style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
                   className={`plan flex flex-col p-8 sm:p-10 ${
@@ -192,7 +155,7 @@ export default function Home() {
                           <PlanIcon />
                         </span>
                       </span>
-                      <h3 className="display-sm text-[1.75rem] text-ink">{plan.name}</h3>
+                      <h3 className="display-sm text-[1.75rem] text-ink">{plan.label}</h3>
                     </div>
                     {plan.featured && (
                       <span className="label text-faint">Most chosen</span>
@@ -205,9 +168,9 @@ export default function Home() {
 
                   <div className="mt-8 flex items-baseline gap-2">
                     <span className="numeric text-4xl tracking-tight text-ink">
-                      {plan.price}
+                      {formatPaise(plan.amountPaise)}
                     </span>
-                    <span className="label text-faint">{plan.cadence}</span>
+                    <span className="label text-faint">per month</span>
                   </div>
 
                   <ul className="mt-8 flex flex-1 flex-col gap-3 border-t border-line pt-8">
@@ -225,7 +188,7 @@ export default function Home() {
                   </ul>
 
                   <a href="#contact" className="btn plan-cta mt-10 w-full">
-                    Choose {plan.name.toLowerCase()}
+                    Choose {plan.label.toLowerCase()}
                   </a>
                 </div>
               );

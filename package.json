@@ -11,6 +11,7 @@
   "dependencies": {
     "@livekit/components-react": "^2.9.23",
     "@livekit/components-styles": "^1.2.0",
+    "@react-pdf/renderer": "^4.5.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@supabase/ssr": "^0.12.3",

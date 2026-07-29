@@ -1,94 +1,79 @@
 import type { PlanDuration, PlanTier } from "@/lib/db-types";
 
 /**
- * Plan catalogue — tier x duration.
+ * Plan catalogue — tier x duration, pure and client-safe.
  *
- * The three tiers and their monthly prices are the ones the landing page
- * already sells, so those are authoritative. Quarterly and annual prices are
- * *not* confirmed: they are derived below from a placeholder discount and
- * flagged `priceConfirmed: false`. Phase 3 must not charge an unconfirmed
- * price — `assertChargeable()` exists to make that a hard failure rather than
- * something that quietly bills a made-up number.
+ * The *numbers* (monthly price per tier, discount per duration) are admin-
+ * editable and live in Supabase (`plan_prices`, `plan_duration_discounts`) —
+ * see `src/lib/pricing.ts`, which fetches them and calls `buildPlan()` below.
+ * This file only knows the tier/duration metadata (label, summary, months)
+ * and the pure amortisation math, so it stays importable from client
+ * components (e.g. the admin member row) without dragging in a Supabase
+ * client.
  *
  * Money is in paise throughout. Rupee floats accumulate rounding errors the
  * moment a discount is applied.
  */
 
-export const PLAN_TIERS = ["group", "one_to_one", "squad"] as const;
+export const PLAN_TIERS = ["group", "one_to_one"] as const;
 export const PLAN_DURATIONS = ["monthly", "quarterly", "annual"] as const;
 
-interface TierDefinition {
+interface TierMeta {
   tier: PlanTier;
   /** Display name — matches the landing page copy. */
   label: string;
   summary: string;
-  monthlyPaise: number;
-  /** Squad is priced per person with a two-person minimum. */
-  perPerson: boolean;
+  perks: string[];
+  /** Landing page highlights this one as the default choice. */
+  featured: boolean;
 }
 
-const TIERS: Record<PlanTier, TierDefinition> = {
+export const TIER_META: Record<PlanTier, TierMeta> = {
   group: {
     tier: "group",
     label: "Group",
     summary:
       "Coached sessions with a room of people going through the same thing.",
-    monthlyPaise: 149_900,
-    perPerson: false,
+    perks: [
+      "Personalised diet plan",
+      "Home workout support",
+      "Group live sessions",
+      "Flexible timings",
+    ],
+    featured: false,
   },
   one_to_one: {
     tier: "one_to_one",
     label: "One-to-one",
     summary:
       "The whole session is yours. Best if you're working around an injury or a deadline.",
-    monthlyPaise: 299_900,
-    perPerson: false,
-  },
-  squad: {
-    tier: "squad",
-    label: "Squad",
-    summary:
-      "Train with a partner. Cheaper than one-to-one, and far harder to skip.",
-    monthlyPaise: 119_900,
-    perPerson: true,
+    perks: [
+      "Personalised diet plan",
+      "Progress tracking & monitoring",
+      "Gym + home programme",
+      "Direct trainer access",
+    ],
+    featured: true,
   },
 };
 
-interface DurationDefinition {
+interface DurationMeta {
   duration: PlanDuration;
   label: string;
   months: number;
-  /**
-   * Placeholder until the user confirms real longer-term pricing. Only the
-   * monthly row is a confirmed number.
-   */
-  discount: number;
-  priceConfirmed: boolean;
 }
 
-const DURATIONS: Record<PlanDuration, DurationDefinition> = {
-  monthly: {
-    duration: "monthly",
-    label: "Monthly",
-    months: 1,
-    discount: 0,
-    priceConfirmed: true,
-  },
-  quarterly: {
-    duration: "quarterly",
-    label: "Quarterly",
-    months: 3,
-    discount: 0.1,
-    priceConfirmed: false,
-  },
-  annual: {
-    duration: "annual",
-    label: "Annual",
-    months: 12,
-    discount: 0.2,
-    priceConfirmed: false,
-  },
+export const DURATION_META: Record<PlanDuration, DurationMeta> = {
+  monthly: { duration: "monthly", label: "Monthly", months: 1 },
+  quarterly: { duration: "quarterly", label: "Quarterly", months: 3 },
+  annual: { duration: "annual", label: "Annual", months: 12 },
 };
+
+/** Per-tier, per-duration numbers — sourced from the DB, defaults in `src/lib/pricing.ts`. */
+export interface PricingCatalogue {
+  monthlyPaise: Record<PlanTier, number>;
+  discounts: Record<PlanDuration, { discount: number; priceConfirmed: boolean }>;
+}
 
 export interface Plan {
   tier: PlanTier;
@@ -98,21 +83,29 @@ export interface Plan {
   label: string;
   durationLabel: string;
   summary: string;
+  perks: string[];
+  featured: boolean;
   months: number;
   /** Total charged up front for the whole term. */
   amountPaise: number;
   /** Effective per-month cost, for "₹X/month billed quarterly" copy. */
   perMonthPaise: number;
-  perPerson: boolean;
   priceConfirmed: boolean;
 }
 
-function buildPlan(tier: PlanTier, duration: PlanDuration): Plan {
-  const t = TIERS[tier];
-  const d = DURATIONS[duration];
+export function buildPlan(
+  tier: PlanTier,
+  duration: PlanDuration,
+  catalogue: PricingCatalogue,
+): Plan {
+  const t = TIER_META[tier];
+  const d = DURATION_META[duration];
+  const monthlyPaise = catalogue.monthlyPaise[tier];
+  const { discount, priceConfirmed } = catalogue.discounts[duration];
+
   // Round to whole rupees so the checkout total is never ₹4,047.30.
   const amountPaise =
-    Math.round((t.monthlyPaise * d.months * (1 - d.discount)) / 100) * 100;
+    Math.round((monthlyPaise * d.months * (1 - discount)) / 100) * 100;
 
   return {
     tier,
@@ -121,24 +114,23 @@ function buildPlan(tier: PlanTier, duration: PlanDuration): Plan {
     label: t.label,
     durationLabel: d.label,
     summary: t.summary,
+    perks: t.perks,
+    featured: t.featured,
     months: d.months,
     amountPaise,
     perMonthPaise: Math.round(amountPaise / d.months),
-    perPerson: t.perPerson,
-    priceConfirmed: d.priceConfirmed,
+    priceConfirmed,
   };
 }
 
-export const PLANS: Plan[] = PLAN_TIERS.flatMap((tier) =>
-  PLAN_DURATIONS.map((duration) => buildPlan(tier, duration)),
-);
-
-export function getPlan(tier: PlanTier, duration: PlanDuration): Plan {
-  return buildPlan(tier, duration);
+export function buildPlans(catalogue: PricingCatalogue): Plan[] {
+  return PLAN_TIERS.flatMap((tier) =>
+    PLAN_DURATIONS.map((duration) => buildPlan(tier, duration, catalogue)),
+  );
 }
 
-export function findPlanById(id: string): Plan | undefined {
-  return PLANS.find((plan) => plan.id === id);
+export function findPlanById(plans: Plan[], id: string): Plan | undefined {
+  return plans.find((plan) => plan.id === id);
 }
 
 /**

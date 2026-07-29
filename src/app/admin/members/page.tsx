@@ -1,12 +1,13 @@
 import { listMembers } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
+import { getPlans } from "@/lib/pricing";
 import MemberRow from "./MemberRow";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMembersPage() {
   await requireAdmin();
-  const members = await listMembers();
+  const [members, plans] = await Promise.all([listMembers(), getPlans()]);
 
   return (
     <>
@@ -32,6 +33,7 @@ export default async function AdminMembersPage() {
               key={profile.id}
               profile={profile}
               subscription={subscription}
+              plans={plans}
             />
           ))}
         </ul>

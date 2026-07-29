@@ -77,4 +77,12 @@ export const serverEnv = {
   get chatLogEnabled() {
     return process.env.CHAT_LOG_ENABLED === "true";
   },
+  /** Self-assessment result emails (Phase 5.5). Resend's free tier covers MVP volume. */
+  get resendApiKey() {
+    return required("RESEND_API_KEY");
+  },
+  /** "Name <address>" shown as the sender — must be a domain verified in Resend. */
+  get resendFromAddress() {
+    return process.env.RESEND_FROM_EMAIL ?? "Mass Fitness <onboarding@resend.dev>";
+  },
 };

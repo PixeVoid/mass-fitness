@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
-import { PLAN_DURATIONS, PLAN_TIERS, getPlan, termEndDate } from "@/lib/plans";
+import { PLAN_DURATIONS, PLAN_TIERS, termEndDate } from "@/lib/plans";
+import { getPlan } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -106,7 +107,7 @@ export async function grantMembership(
     return { error: "Check the plan and amount." };
   }
 
-  const plan = getPlan(parsed.data.planTier, parsed.data.planDuration);
+  const plan = await getPlan(parsed.data.planTier, parsed.data.planDuration);
   const start = new Date();
 
   const supabase = createAdminClient();
