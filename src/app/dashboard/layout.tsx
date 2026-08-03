@@ -1,3 +1,4 @@
+import ChatWidget from "@/components/chat/ChatWidget";
 import SiteHeader, { HeaderSpacer } from "@/components/SiteHeader";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default function DashboardLayout({
         <HeaderSpacer />
         {children}
       </main>
+      <ChatWidget />
     </>
   );
 }

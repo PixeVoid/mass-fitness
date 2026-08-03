@@ -1,10 +1,14 @@
 import * as z from "zod";
-import { getUser } from "@/lib/auth/dal";
+import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
+import {
+  MIN_MESSAGE_CHARS,
+  checkChatQuota,
+  logAnswer,
+  logAttempt,
+} from "@/lib/chat/limits";
 import { SYSTEM_PROMPT } from "@/lib/chat/prompt";
 import { streamCompletion } from "@/lib/chat/stream";
 import { serverEnv } from "@/lib/env";
-import { rateLimit } from "@/lib/rate-limit";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * POST /api/chat — the fitness assistant (BUILD_PLAN Phase 5).
@@ -21,10 +25,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 
 export const dynamic = "force-dynamic";
-
-/** Per user, per window. Generous for a human, ruinous for a script. */
-const RATE_LIMIT = 20;
-const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * Only the tail of the conversation is forwarded. Caps token spend and stops a
@@ -46,23 +46,33 @@ const bodySchema = z.object({
     .max(50),
 });
 
+/** Copy for each refusal, so the widget does not have to know the rules. */
+const QUOTA_MESSAGES: Record<string, string> = {
+  rate_limited: "You're sending these faster than I can keep up. Give it a minute.",
+  daily_limit: "You've hit today's message limit. It resets on a rolling 24 hours.",
+  duplicate: "You just asked that — give me a moment to finish the last one.",
+  too_short: `Ask me something a bit longer (at least ${MIN_MESSAGE_CHARS} characters).`,
+};
+
 function json(body: unknown, status: number, headers?: HeadersInit) {
   return Response.json(body, { status, headers });
 }
 
 export async function POST(request: Request) {
-  // Auth-gated so the quota is spent on members, and so an abusive caller is
-  // an identifiable row rather than an IP.
+  // Auth-gated so an abusive caller is an identifiable row rather than an IP.
   const user = await getUser();
   if (!user) {
     return json({ error: "unauthenticated" }, 401);
   }
 
-  const limit = rateLimit(`chat:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!limit.allowed) {
-    return json({ error: "rate_limited" }, 429, {
-      "Retry-After": String(limit.retryAfter),
-    });
+  // Members only. Every answer costs money at the provider, so the people it
+  // is spent on should be the people paying for it — a signed-up account that
+  // never subscribed is not one of them. Staff are exempt on the same
+  // reasoning as the live rooms: a coach is not a customer of the product.
+  const profile = await getProfile();
+  const isStaff = profile?.role === "trainer" || profile?.role === "admin";
+  if (!isStaff && !(await getActiveSubscription())) {
+    return json({ error: "subscription_required", redirectTo: "/subscribe" }, 403);
   }
 
   let payload: unknown;
@@ -80,6 +90,19 @@ export async function POST(request: Request) {
   const history = parsed.data.messages.slice(-MAX_HISTORY);
   const lastUserMessage =
     [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+
+  // Every abuse rule is evaluated here, before a paid token is spent.
+  const quota = await checkChatQuota(user.id, lastUserMessage);
+  if (!quota.allowed) {
+    return json(
+      { error: quota.reason, message: QUOTA_MESSAGES[quota.reason] },
+      quota.reason === "too_short" ? 400 : 429,
+      quota.retryAfter ? { "Retry-After": String(quota.retryAfter) } : undefined,
+    );
+  }
+
+  // Recorded as an attempt, not as a completed exchange — see logAttempt.
+  const logId = await logAttempt(user.id, lastUserMessage);
 
   let upstream: Response;
   try {
@@ -113,8 +136,7 @@ export async function POST(request: Request) {
   }
 
   const stream = streamCompletion(upstream.body, async (answer) => {
-    if (!serverEnv.chatLogEnabled) return;
-    await logExchange(user.id, lastUserMessage, answer);
+    if (logId) await logAnswer(logId, answer);
   });
 
   return new Response(stream, {
@@ -124,21 +146,5 @@ export async function POST(request: Request) {
       // Stops nginx-style proxies from buffering the stream into one blob.
       "X-Accel-Buffering": "no",
     },
-  });
-}
-
-/**
- * Written with the service role because chat_logs has no client insert policy:
- * support needs to read these, and a user must not be able to forge them.
- * Gated behind CHAT_LOG_ENABLED (BUILD_PLAN open flag 3).
- */
-async function logExchange(userId: string, message: string, response: string) {
-  if (!message) return;
-
-  const supabase = createAdminClient();
-  await supabase.from("chat_logs").insert({
-    user_id: userId,
-    message,
-    response: response || null,
   });
 }

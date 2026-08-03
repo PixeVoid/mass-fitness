@@ -73,10 +73,6 @@ export const serverEnv = {
   get chatModel() {
     return process.env.CHAT_MODEL ?? "llama-3.3-70b-versatile";
   },
-  /** Open flag 3 in BUILD_PLAN — off unless explicitly switched on. */
-  get chatLogEnabled() {
-    return process.env.CHAT_LOG_ENABLED === "true";
-  },
   /** Self-assessment result emails (Phase 5.5). Resend's free tier covers MVP volume. */
   get resendApiKey() {
     return required("RESEND_API_KEY");

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" meta="Last updated: January 2026 · Effective date: August 2025">
+    <LegalPage title="Privacy Policy" meta="Last updated: August 2026 · Effective date: August 2025">
       <p className="text-[15px] text-muted leading-relaxed mb-10">
         This Privacy Policy governs how Mass Fitness (operated by Siddhant Sawan, registered at Sardar Patel Colony, Patna, Bihar) collects, uses, maintains, and discloses information from users of massfitness.in and the Mass Fitness application.
       </p>
@@ -23,6 +23,7 @@ export default function PrivacyPolicyPage() {
             "Billing / shipping address",
             "Payment information (processed securely via third-party payment gateways)",
             "Health and fitness goals you voluntarily provide",
+            "Your conversations with the in-app fitness assistant, including anything about your body or training you choose to type into it",
             "Browser type, operating system, and browsing behaviour (non-personal)",
           ]}
         />
@@ -41,47 +42,68 @@ export default function PrivacyPolicyPage() {
         />
       </Section>
 
-      <Section index="03" title="Information sharing">
+      <Section index="03" title="The fitness assistant">
+        <p>
+          The in-app assistant is an AI chatbot. Your messages to it, and its replies, are stored against your account and used to:
+        </p>
+        <List
+          items={[
+            "Answer you — your message is sent to our AI provider to generate a reply",
+            "Support you if you contact us about something you discussed with it",
+            "Improve the assistant, including reviewing what members ask so we can make its answers better and, in future, train our own model on it",
+            "Detect and prevent misuse of the service",
+          ]}
+        />
+        <p>
+          Please do not type anything into it you would not want stored. It is not a doctor and must not be used for medical questions — it is instructed to decline them.
+        </p>
+        <p>
+          Conversations are deleted 12 months after they take place. You can ask us to delete yours sooner, at any time, using the contact details below.
+        </p>
+      </Section>
+
+      <Section index="04" title="Information sharing">
         <p>
           We do not sell, trade, or rent your personal information. We may share information with trusted third-party service providers who help operate our website, process payments, and deliver services — subject to confidentiality agreements — or when required by law.
         </p>
       </Section>
 
-      <Section index="04" title="Data security">
+      <Section index="05" title="Data security">
         <p>
           We use appropriate technical and organisational measures to protect your data from unauthorised access, alteration, disclosure, or destruction. No method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
         </p>
       </Section>
 
-      <Section index="05" title="Your rights">
+      <Section index="06" title="Your rights">
         <List
           items={[
             "Access and update your personal information by contacting us directly",
             "Opt out of promotional emails at any time via the unsubscribe link",
             "Request deletion of your personal data (subject to legal obligations)",
+            "Request deletion of your fitness assistant conversations without closing your account",
           ]}
         />
       </Section>
 
-      <Section index="06" title="Cookies">
+      <Section index="07" title="Cookies">
         <p>
           Our website may use cookies to enhance user experience. You may set your browser to refuse cookies, though some features may not function properly as a result.
         </p>
       </Section>
 
-      <Section index="07" title="Children&rsquo;s privacy">
+      <Section index="08" title="Children&rsquo;s privacy">
         <p>
           Our services are not directed at individuals under 18. We do not knowingly collect personal information from minors — clients under 18 require written parent or guardian consent before enrolling.
         </p>
       </Section>
 
-      <Section index="08" title="Changes to this policy">
+      <Section index="09" title="Changes to this policy">
         <p>
           We may update this Privacy Policy at any time. Changes will be posted here with an updated revision date. Continued use of the platform constitutes acceptance of the updated policy.
         </p>
       </Section>
 
-      <Section index="09" title="Governing law">
+      <Section index="10" title="Governing law">
         <p>
           This Privacy Policy is governed by the laws of India. Disputes are subject to the exclusive jurisdiction of the courts of India.
         </p>
