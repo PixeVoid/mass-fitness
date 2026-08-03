@@ -8,7 +8,7 @@
 
 ## Status at a glance
 
-Last updated: 2026-07-29. Update this table in the same commit as the work it describes.
+Last updated: 2026-08-03. Update this table in the same commit as the work it describes.
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -16,10 +16,11 @@ Last updated: 2026-07-29. Update this table in the same commit as the work it de
 | 0.5 — SEO foundation | ✅ Done | Metadata API, `sitemap.ts`, `robots.ts`, OG image, JSON-LD all in place. Behind-auth routes now carry `noindex` as well as a robots disallow. |
 | 1 — Landing page | ✅ Done | 3D hero, features, pricing, contact. |
 | 2 — Auth + data capture | ✅ Code complete | **Switched from phone-OTP to email-OTP + Google OAuth 2026-07-25** — see Section 0.3. Profile capture, protected dashboard. Untested against a live Supabase project. |
-| 3 — Subscriptions + PhonePe | ⬜ Not started | **Squad tier retired 2026-07-29** — Group and One-to-one only now. Monthly prices are admin-editable (`/admin/pricing`, `plan_prices`/`plan_duration_discounts` tables, `src/lib/pricing.ts`) rather than fixed in code; quarterly/annual are now confirmed (10%/20% discount off monthly). Blocked on merchant account only. |
-| 4 — Live classes (LiveKit) | 🟡 Backend done | Token route with the paywall gate, plus a minimal viewer. Needs a real LiveKit project to test. |
-| 5 — Chatbot (Groq) | 🟡 Backend done | `/api/chat` streaming route. No chat UI widget yet — that is the remaining piece. |
+| 3 — Subscriptions + PhonePe | 🟡 Code complete, unverified | `/subscribe` checkout, `settleCheckout` idempotent activation, `/api/payments/callback`. The provider sits behind a seam (`src/lib/payments/provider.ts`); `PAYMENT_PROVIDER=mock` walks the whole flow without credentials. **PhonePe's wire details in `phonepe.ts` have never run against a live account** — verify against current docs before taking real money. |
+| 4 — Live classes (LiveKit) | 🟡 Code complete, unverified | Token route with the paywall gate, plus a two-way room: members publish camera/mic too (2026-08-03), both off on join. Needs a real LiveKit project to test — section 3.9's checklist is untouched. |
+| 5 — Chatbot (Groq) | ✅ Code complete | `/api/chat` streaming route plus the widget, mounted in the member area. Members-only, with durable Postgres-backed limits (burst + daily cap + duplicate suppression). Logging is unconditional and 12-month retained — see open flag 2. |
 | 6 — Admin dashboard | ✅ Code complete | `/admin` — members (roles + manual membership grants), class scheduling, overview. Removes all the hand-written SQL except the first admin promotion. |
+| 6.5 — Blog + FAQ | ✅ Code complete | `/blog`, `/blog/[slug]`, `/faq` with FAQPage JSON-LD; both admin-authored from `/admin/blog` and `/admin/faq`. Resolves open flag 3. |
 | 7 — Flutter app prep | ⬜ Not started | — |
 
 ### Framework note (matters before writing any code)
@@ -33,13 +34,16 @@ The project is on **Next.js 16**, which is not the Next.js most training data de
 
 None of it is code — all of it is account setup, and nothing below can be done from a dev session.
 
-1. **Create the Supabase project**, then run `supabase/migrations/0001_init.sql` and `supabase/migrations/0002_email_auth.sql` against it, in that order (SQL editor or `supabase db push`).
+1. **Create the Supabase project**, then run every file in `supabase/migrations/` against it in filename order — `0001_init` … `0007_content` (SQL editor or `supabase db push`).
 2. **Enable Email auth** in Supabase → Authentication → Providers (on by default on new projects, but confirm). No SMS/WhatsApp provider needed — see Section 0.3.
 3. **Create a Google OAuth client** and wire it into Supabase → Authentication → Providers → Google. Also see Section 0.3.
 4. **Create a LiveKit Cloud project** for the URL, key and secret.
 5. **Get a Groq API key.**
-6. Copy `.env.example` → `.env.local` and fill it in, including `NEXT_PUBLIC_SITE_URL`. Same values go into Vercel's env settings for deploys.
-7. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
+6. **Get a Resend API key** and verify a sending domain, for the self-assessment result emails.
+7. **Enable pg_cron** (Database → Extensions) so `expire_subscriptions()` and `prune_chat_logs()` run on a schedule. `0006_maintenance.sql` applies without it, but then both need running by hand.
+8. **Confirm "linked accounts" is on** so an email signup and a later Google sign-in with the same address are one account, not two.
+9. Copy `.env.example` → `.env.local` and fill it in, including `NEXT_PUBLIC_SITE_URL`. Same values go into Vercel's env settings for deploys. `PAYMENT_PROVIDER=mock` until PhonePe credentials exist.
+10. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
    ```sql
    update public.profiles set role = 'admin' where email = 'you@example.com';
    ```
@@ -466,9 +470,12 @@ Original spec:
 **Still open:**
 
 1. **PhonePe merchant account status** — needed before Phase 3 goes beyond sandbox.
-2. **Chat logging to `chat_logs`** — built but **off by default** (`CHAT_LOG_ENABLED=false`). Switching it on means storing what members ask the bot, which for a fitness product includes things about their body and health. If it goes on, the privacy policy needs to say so and the chat UI should mention it.
-3. **Whether a blog/content section is in scope** — affects Phase 0.5 SEO planning and Phase 1 routing.
 4. **WhatsApp Business Cloud API** — Phase 5.5 result delivery uses a prefilled `wa.me` link today. Automating it needs Meta business verification and an approved message template; no lead time estimate until that process is started.
+
+**Resolved since:**
+
+2. ~~Chat logging to `chat_logs`~~ — resolved 2026-08-03, switched **on** and no longer a flag. The assistant's rate limits are counted from those rows, so a switch that disabled logging would silently disable abuse protection. Retention is 12 months (`prune_chat_logs()`), the privacy policy has a section on it, and the widget says so above the first message. Consent covers using the conversations to improve the assistant — including future model training — which is why it is stated in both places rather than only the policy.
+3. ~~Blog/content section~~ — resolved 2026-08-03, in scope and built. Stored in Postgres rather than MDX in the repo, because a file-based blog needs a deploy per post and the author will not always be a developer. Standalone SEO landing pages were considered and deliberately deferred.
 
 **Resolved:**
 
@@ -479,7 +486,7 @@ Original spec:
 
 7. ~~OTP delivery channel for launch~~ — resolved 2026-07-25, differently than originally framed. Phone OTP (WhatsApp/SMS) is dropped in favour of **email OTP + Google OAuth**, which need no DLT registration or WhatsApp Business approval. See **Section 0.3**. Phone-based OTP is still available to add back later if there's a product reason (Section 0.3, final subsection).
 8. ~~Who is a trainer?~~ — resolved. `/admin/members` sets roles and `/admin/classes` assigns trainers. Only the first admin promotion still needs SQL.
-9. **Subscription expiry sweep.** Nothing currently moves a subscription from `active` to `expired` when its term ends. Access checks compare against `end_date` so an expired member is correctly locked out regardless — but the `status` column will drift from reality, and the admin dashboard reads `status`, so it will overstate active memberships. A `pg_cron` job should flip them; worth doing in Phase 3 alongside the payment writes.
+9. ~~Subscription expiry sweep~~ — resolved 2026-08-03. `public.expire_subscriptions()` in `0006_maintenance.sql`, scheduled hourly via pg_cron where the extension is available and runnable by hand where it is not.
 10. **Account linking for email + Google.** If a user signs up with email first and later uses Google with the same address, Supabase creates two separate accounts unless "linked accounts" is enabled in the dashboard (Section 0.3, step 5). Worth confirming this is on before launch.
 11. ~~Quarterly and annual pricing~~ — resolved 2026-07-29. Squad tier retired; Group and One-to-one monthly prices are confirmed (₹2,500 / ₹5,000) and admin-editable at `/admin/pricing`, and quarterly (10% off) / annual (20% off) are now real, confirmed prices rather than placeholders.
 

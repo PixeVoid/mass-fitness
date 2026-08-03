@@ -6,6 +6,8 @@ import { scrollToFeatureSlug } from "@/lib/featureScroll";
 
 const COMPANY_LINKS = [
   { href: "/about", label: "About us" },
+  { href: "/blog", label: "Journal" },
+  { href: "/faq", label: "FAQ" },
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#classes", label: "Classes" },

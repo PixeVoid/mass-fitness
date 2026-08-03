@@ -386,6 +386,20 @@ body {
     }
   }
 
+  /* --- Prose emphasis ---------------------------------------------------
+     `font-synthesis: weight` on <html> stops the browser faking a bold from
+     Instrument Serif, which ships regular + italic only. The side effect is
+     that it also forbids a synthesised *italic* — and Inter, which sets all
+     body copy, ships no italic face at all. So <em> inside a post body
+     rendered upright, silently: an author typing *emphasis* saw nothing
+     happen. Style synthesis is re-enabled here alone, where the alternative
+     is no emphasis rather than a fake one.                                */
+
+  .md-em {
+    font-style: italic;
+    font-synthesis: weight style;
+  }
+
   /* --- Skeletons --------------------------------------------------------
      Placeholder blocks for streamed segments. A slow sweep rather than a
      pulse: a pulsing block draws the eye to the fact that it is empty, where a

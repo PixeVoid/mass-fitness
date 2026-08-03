@@ -48,6 +48,31 @@ export type Subscription = {
   updated_at: string;
 }
 
+export type Post = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  body: string;
+  seo_title: string | null;
+  seo_description: string | null;
+  published_at: string | null;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Faq = {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  position: number;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export type FitnessClass = {
   id: string;
   title: string;
@@ -151,6 +176,26 @@ export interface Database {
         Row: PlanPrice;
         Insert: Insertable<PlanPrice, "updated_at">;
         Update: Partial<PlanPrice>;
+        Relationships: [];
+      };
+      posts: {
+        Row: Post;
+        Insert: Insertable<
+          Post,
+          | "id" | "excerpt" | "body" | "seo_title" | "seo_description"
+          | "published_at" | "author_id" | "created_at" | "updated_at"
+        >;
+        Update: Partial<Post>;
+        Relationships: [];
+      };
+      faqs: {
+        Row: Faq;
+        Insert: Insertable<
+          Faq,
+          | "id" | "category" | "position" | "published"
+          | "created_at" | "updated_at"
+        >;
+        Update: Partial<Faq>;
         Relationships: [];
       };
       plan_duration_discounts: {
