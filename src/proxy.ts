@@ -30,6 +30,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const { pathname, search } = request.nextUrl;
+
+  // No session cookie means there is nothing to refresh and nobody to
+  // identify, so the Supabase client — and the auth round trip it would make —
+  // is skipped entirely. This is the whole of anonymous landing-page traffic,
+  // and it was previously paying for an auth call on every navigation.
+  if (!hasSessionCookie(request)) {
+    if (!pathname.startsWith("/api/") && isAuthedRoute(pathname)) {
+      return NextResponse.redirect(
+        new URL(loginUrlFor(pathname, search), request.url),
+      );
+    }
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(url, anonKey, {
@@ -52,13 +67,14 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // getUser(), not getSession(): it revalidates the token against the auth
-  // server instead of trusting a cookie the client could have forged.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { pathname, search } = request.nextUrl;
+  // getClaims(), not getSession(): it verifies the token's signature instead
+  // of trusting a cookie the client could have forged, and — unlike getUser()
+  // — does that verification locally against a cached JWKS when the project
+  // uses asymmetric signing keys. It still refreshes an about-to-expire
+  // session, which is job (1) above. On a symmetric-key project it degrades to
+  // exactly the Auth-server call getUser() was making.
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims?.claims ?? null;
 
   // API routes answer with a status code, never a redirect to an HTML page —
   // a fetch() caller wants 401, not the login markup.
@@ -75,6 +91,22 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+/**
+ * Mirrors `hasSessionCookie` in the DAL, against a NextRequest rather than the
+ * `cookies()` store — the two cannot share an implementation because this file
+ * must stay clear of `server-only` modules.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      ({ name }) =>
+        name.startsWith("sb-") &&
+        name.includes("-auth-token") &&
+        !name.includes("-code-verifier"),
+    );
 }
 
 export const config = {

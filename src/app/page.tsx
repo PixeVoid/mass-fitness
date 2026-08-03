@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import ClassGrid from "@/components/ClassGrid";
 import Footer from "@/components/Footer";
-import Nav from "@/components/Nav";
 import SectionHeading from "@/components/SectionHeading";
+import SiteHeader from "@/components/SiteHeader";
 import StackScrollContainer from "@/components/StackScrollContainer";
 import StatRow from "@/components/StatRow";
 import { StructuredData } from "@/components/StructuredData";
@@ -46,7 +46,7 @@ export default async function Home() {
   return (
     <>
       <StructuredData monthlyPlans={monthlyPlans} />
-      <Nav />
+      <SiteHeader />
 
       <main id="top" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
         {/* Hero + five feature cards, stacked on scroll */}

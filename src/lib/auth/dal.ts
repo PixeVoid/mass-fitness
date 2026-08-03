@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { Profile, Subscription } from "@/lib/db-types";
 import { createClient } from "@/lib/supabase/server";
@@ -23,19 +24,50 @@ export interface SessionUser {
   email: string | null;
 }
 
+/**
+ * Whether this request even carries a session cookie.
+ *
+ * Every auth read below costs at minimum a JWKS-verified parse and, on a
+ * symmetric-key project, a full round trip to the Auth server. An anonymous
+ * visitor — which is nearly all landing-page traffic — has no token to check,
+ * so asking is pure latency. `@supabase/ssr` stores the session under
+ * `sb-<project-ref>-auth-token`, split into `.0`/`.1` chunks when it outgrows
+ * one cookie; the `-code-verifier` cookies share the prefix but are half-built
+ * PKCE flows, not sessions.
+ */
+export const hasSessionCookie = cache(async (): Promise<boolean> => {
+  const store = await cookies();
+  return store
+    .getAll()
+    .some(
+      ({ name }) =>
+        name.startsWith("sb-") &&
+        name.includes("-auth-token") &&
+        !name.includes("-code-verifier"),
+    );
+});
+
 /** Returns the current user, or null. Never redirects — for optional auth. */
 export const getUser = cache(async (): Promise<SessionUser | null> => {
+  if (!(await hasSessionCookie())) return null;
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  // getClaims(), not getUser(): both establish identity from a *verified*
+  // token rather than a decoded one, but on a project with asymmetric JWT
+  // signing keys getClaims does that verification locally against a cached
+  // JWKS, so the common case costs no network at all. On a symmetric-key
+  // project it falls back to the same Auth-server call getUser() makes, so
+  // this is never slower — and it is never less strict.
+  const { data, error } = await supabase.auth.getClaims();
 
+  if (error || !data?.claims) return null;
+
+  const { sub, email, phone } = data.claims;
   return {
-    id: user.id,
-    phone: user.phone ?? null,
-    email: user.email ?? null,
+    id: sub,
+    phone: typeof phone === "string" && phone ? phone : null,
+    email: typeof email === "string" && email ? email : null,
   };
 });
 
@@ -79,6 +111,36 @@ export const requireOnboardedProfile = cache(async (): Promise<Profile> => {
 
   return profile;
 });
+
+/** What the site header needs to know about the viewer, and nothing more. */
+export interface HeaderIdentity {
+  firstName: string;
+}
+
+/**
+ * Identity for the persistent site header.
+ *
+ * Cheap by construction: it short-circuits to null on the no-cookie path
+ * before touching Supabase, and otherwise reuses the same request-cached
+ * profile read the page itself is about to make, so rendering the header on
+ * /dashboard costs nothing beyond what /dashboard already paid.
+ */
+export const getHeaderIdentity = cache(
+  async (): Promise<HeaderIdentity | null> => {
+    const user = await getUser();
+    if (!user) return null;
+
+    const profile = await getProfile();
+
+    // The profile name is what they typed at onboarding, so it wins. Before
+    // that lands, the email's local part is a better greeting than a generic
+    // placeholder — and better than an empty pill.
+    const source = profile?.name?.trim() || user.email?.split("@")[0] || "";
+    const firstName = source.split(/\s+/)[0] || "Account";
+
+    return { firstName };
+  },
+);
 
 export const isAdmin = cache(async (): Promise<boolean> => {
   const profile = await getProfile();

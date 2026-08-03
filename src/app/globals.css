@@ -291,6 +291,51 @@ body {
     box-shadow: 0 0 0 4px var(--overlay);
   }
 
+  /* --- Active nav pill --------------------------------------------------
+     The header's "you are here" marker. It used to be a flat inverse fill,
+     which on a monochrome site made an active section look identical to a
+     solid button — the highlight read as an affordance rather than as state.
+     It now carries a thin ring drawn from the same conic gradient as .btn-ai,
+     dialled well back: half the opacity, twice the period. The AI CTA is the
+     loudest thing on the page by design and this must not compete with it, but
+     sharing the gradient keeps "this is the live one" a single idea.
+
+     The ring is a masked pseudo-element rather than a border, because a
+     gradient cannot paint a border directly — border-box background-clip is
+     the alternative, and it forces the fill to be a gradient too.          */
+
+  .nav-pill-active {
+    position: relative;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+  }
+
+  .nav-pill-active::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: 999px;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--ai-angle),
+      #5b8def,
+      #9b6bff,
+      #4fd8a3,
+      #5b8def
+    );
+    opacity: 0.5;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: ai-border-spin 14s linear infinite;
+    pointer-events: none;
+  }
+
   /* --- Pricing plans ----------------------------------------------------
      One plan carries the highlight by default. On a pointer device the
      highlight follows the cursor instead of staying pinned to the middle
@@ -339,6 +384,25 @@ body {
       background: var(--inverse-bg);
       color: var(--inverse-fg);
     }
+  }
+
+  /* --- Skeletons --------------------------------------------------------
+     Placeholder blocks for streamed segments. A slow sweep rather than a
+     pulse: a pulsing block draws the eye to the fact that it is empty, where a
+     sweep reads as "arriving". Sits on the sunk surface token so it stays a
+     tone of the page in both themes rather than a grey patch.             */
+
+  .skeleton {
+    background-color: var(--surface-sunk);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--overlay) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
   }
 
   /* --- Links ------------------------------------------------------------
@@ -555,6 +619,15 @@ body {
 @keyframes ai-border-spin {
   to {
     --ai-angle: 360deg;
+  }
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
 

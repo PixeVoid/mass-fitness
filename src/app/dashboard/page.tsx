@@ -8,7 +8,7 @@ import {
   getUpcomingClasses,
 } from "@/lib/classes";
 import { formatPaise } from "@/lib/plans";
-import { getPlan } from "@/lib/pricing";
+import { getPlan, getPricingCatalogue } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -21,14 +21,25 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // The schedule and the price list are the same for everyone, so neither has
+  // to wait to find out who is asking. Started here, they overlap the session
+  // read instead of queueing behind it — this page used to run profile, then
+  // subscription, then plan as three separate round trips, and the wait was
+  // the sum of all of them.
+  const classesPromise = getUpcomingClasses();
+  const cataloguePromise = getPricingCatalogue();
+
   // Redirects to /login when signed out and /onboarding when the profile is
   // incomplete — the proxy's optimistic check is not relied on here.
   const profile = await requireOnboardedProfile();
+
   const [subscription, classes] = await Promise.all([
     getActiveSubscription(),
-    getUpcomingClasses(),
+    classesPromise,
+    cataloguePromise,
   ]);
 
+  // Resolves off the already-warm catalogue rather than issuing its own query.
   const plan = subscription
     ? await getPlan(subscription.plan_tier, subscription.plan_duration)
     : null;
@@ -37,7 +48,7 @@ export default async function DashboardPage() {
   const isStaff = profile.role === "trainer" || profile.role === "admin";
 
   return (
-    <main className="mx-auto w-full max-w-[1000px] px-5 py-16 sm:px-8 sm:py-24">
+    <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <p className="label text-faint">Dashboard</p>
@@ -172,6 +183,6 @@ export default async function DashboardPage() {
           </ul>
         )}
       </section>
-    </main>
+    </>
   );
 }

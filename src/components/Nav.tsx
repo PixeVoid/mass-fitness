@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import { LogoMark } from "./Logo";
+import type { HeaderIdentity } from "@/lib/auth/dal";
 import { scrollToFeatureCard } from "@/lib/featureScroll";
 
 const LINKS = [
@@ -19,19 +21,40 @@ const SECTION_IDS = ["features", "classes", "how-it-works", "pricing", "contact"
 /**
  * Floating pill header — three islands over the page rather than a solid bar.
  *
- * The active pill is driven by which section is under the top of the viewport.
- * The previous version also owned an expanding sub-tab strip wired to the
- * scroll-stack's internal progress; that coupling is gone. The stack now owns
- * its own pagination, which is where it belongs.
+ * Rendered on every page by SiteHeader, not just the landing page: dropping it
+ * on /dashboard, /assessment and the legal pages left those routes with a bare
+ * wordmark and no way back into the site, which read as a different product.
+ *
+ * Two kinds of "active" run through here. On the landing page the section
+ * pills follow whichever section is under the top of the viewport. Everywhere
+ * else there are no sections to track, and instead the pill for the current
+ * *route* — today only the account pill, on /dashboard — carries the marker.
  */
-export default function Nav() {
+export default function Nav({
+  identity = null,
+}: {
+  identity?: HeaderIdentity | null;
+}) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<string>("");
+  const [scrolledSection, setScrolledSection] = useState<string>("");
+
+  const isHome = pathname === "/";
+  const onAccount = pathname.startsWith("/dashboard");
+
+  // Off the landing page there are no sections to be inside, so the spy's last
+  // reading is stale rather than merely unused — derived here instead of being
+  // cleared from the effect, which would cost a second render to say nothing.
+  const active = isHome ? scrolledSection : "";
 
   useEffect(() => {
+    // The sections only exist on the landing page; anywhere else this would
+    // be a scroll listener that can never match anything.
+    if (!isHome) return;
+
     const onScroll = () => {
       if (window.scrollY < 120) {
-        setActive("");
+        setScrolledSection("");
         return;
       }
       let current = "";
@@ -44,13 +67,13 @@ export default function Nav() {
           break;
         }
       }
-      setActive(current);
+      setScrolledSection(current);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [isHome]);
 
   useEffect(() => {
     if (!open) return;
@@ -76,9 +99,12 @@ export default function Nav() {
     if (!href.startsWith("/#")) return;
     const slug = href.slice(2);
 
+    // Off the landing page there is nothing to scroll to, so every one of
+    // these has to fall through to real navigation. Each branch below only
+    // takes over the click once it knows it has a target — a preventDefault
+    // ahead of that check is what turned these into dead links on /dashboard.
     if (slug === "features") {
-      e.preventDefault();
-      scrollToFeatureCard(1);
+      if (scrollToFeatureCard(1)) e.preventDefault();
       return;
     }
 
@@ -88,8 +114,16 @@ export default function Nav() {
     target.scrollIntoView({ behavior: "smooth" });
   };
 
-  const island =
-    "pointer-events-auto rounded-full border border-line bg-paper/75 shadow-[var(--shadow-soft)] backdrop-blur-xl";
+  const islandBase =
+    "pointer-events-auto border border-line shadow-[var(--shadow-soft)] backdrop-blur-xl";
+  const island = `${islandBase} rounded-full bg-paper/75`;
+
+  // Signed in, the pill is the way into the account; signed out it is the way
+  // in at all. Pointing it straight at /dashboard matters for more than
+  // wording: /login bounces an authenticated visitor onward, so leaving it as
+  // "Login" cost a whole extra server round trip on every click.
+  const accountHref = identity ? "/dashboard" : "/login";
+  const accountLabel = identity ? identity.firstName : "Login";
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-4 z-50 flex items-center justify-between gap-4 px-4 sm:top-6 sm:px-6 lg:px-8">
@@ -120,7 +154,7 @@ export default function Nav() {
               aria-current={isActive ? "true" : undefined}
               className={`rounded-full px-4 py-2 text-[0.8125rem] transition-colors duration-300 ${
                 isActive
-                  ? "bg-inverse-bg text-inverse-fg"
+                  ? "nav-pill-active"
                   : "text-muted hover:bg-overlay hover:text-ink"
               }`}
             >
@@ -130,16 +164,25 @@ export default function Nav() {
         })}
       </nav>
 
-      {/* Actions */}
+      {/* Actions. The row is right-anchored, so a longer name grows the island
+          leftwards on its own — the name only needs a ceiling so a very long
+          one cannot push into the links. */}
       <div className={`${island} flex items-center gap-1 p-1.5`}>
         <ThemeToggle />
 
         <Link
-          href="/login"
+          href={accountHref}
           onClick={() => setOpen(false)}
-          className="hidden rounded-full bg-inverse-bg px-5 py-2.5 text-[0.8125rem] font-medium text-inverse-fg transition-opacity duration-300 hover:opacity-80 sm:block"
+          aria-current={onAccount ? "page" : undefined}
+          title={identity ? `${identity.firstName} — your dashboard` : undefined}
+          className={`hidden rounded-full px-5 py-2.5 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:block ${
+            onAccount ? "nav-pill-active" : "bg-inverse-bg text-inverse-fg"
+          }`}
         >
-          Login
+          {/* The clamp lives on an inner span: the active ring is drawn just
+              outside the pill, and an `overflow: hidden` on the pill itself
+              would crop it to a stripe along the top edge. */}
+          <span className="block max-w-[9rem] truncate">{accountLabel}</span>
         </Link>
 
         <button
@@ -164,10 +207,14 @@ export default function Nav() {
         </button>
       </div>
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet. Squared off rather than sharing the pills' `rounded-full`:
+          on a tall column that radius clips the panel — background, border and
+          backdrop-blur alike — into an ellipse, leaving the page showing
+          through at the corners and the links floating on nothing. Opaquer
+          than the pills too, since it has body text behind it, not a hero. */}
       {open && (
         <div
-          className={`${island} absolute inset-x-4 top-[4.5rem] flex flex-col p-3 md:hidden`}
+          className={`${islandBase} absolute inset-x-4 top-[4.5rem] flex flex-col rounded-3xl bg-paper/95 p-3 md:hidden`}
         >
           {LINKS.map((link) => (
             <Link
@@ -180,11 +227,14 @@ export default function Nav() {
             </Link>
           ))}
           <Link
-            href="/login"
+            href={accountHref}
             onClick={() => setOpen(false)}
-            className="btn btn-solid mt-3 w-full"
+            aria-current={onAccount ? "page" : undefined}
+            className={`btn mt-3 w-full ${
+              onAccount ? "nav-pill-active" : "btn-solid"
+            }`}
           >
-            Login
+            {identity ? `${identity.firstName} — dashboard` : "Login"}
           </Link>
         </div>
       )}
