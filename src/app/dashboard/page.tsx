@@ -7,7 +7,8 @@ import {
   formatClassTime,
   getUpcomingClasses,
 } from "@/lib/classes";
-import { formatPaise, getPlan } from "@/lib/plans";
+import { formatPaise } from "@/lib/plans";
+import { getPlan } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -29,7 +30,7 @@ export default async function DashboardPage() {
   ]);
 
   const plan = subscription
-    ? getPlan(subscription.plan_tier, subscription.plan_duration)
+    ? await getPlan(subscription.plan_tier, subscription.plan_duration)
     : null;
 
   // Trainers and admins run classes rather than buy them.

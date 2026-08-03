@@ -16,8 +16,8 @@ export default async function AdminLeadsPage() {
       </div>
 
       <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-muted">
-        Visitors who ran the AI assessment on the landing page and left their
-        details. Follow up while the conversation is still fresh.
+        Visitors who ran the self-assessment on the landing page and left
+        their details. Follow up while it&rsquo;s still fresh.
       </p>
 
       {leads.length === 0 ? (
@@ -52,9 +52,17 @@ export default async function AdminLeadsPage() {
                     )}
                   </p>
                 </div>
-                <p className="numeric text-[0.8125rem] text-faint">
-                  {formatClassTime(lead.created_at)}
-                </p>
+                <div className="text-right">
+                  {lead.score !== null && (
+                    <p className="numeric text-[0.9375rem] text-ink">
+                      {lead.score}/100
+                      <span className="label ml-2 text-faint">{lead.band}</span>
+                    </p>
+                  )}
+                  <p className="numeric mt-1 text-[0.8125rem] text-faint">
+                    {formatClassTime(lead.created_at)}
+                  </p>
+                </div>
               </div>
 
               {lead.summary && (

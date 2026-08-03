@@ -15,7 +15,7 @@ export default async function AdminOverviewPage() {
         <Stat label="Signups" value={stats.members} />
         <Stat label="Active memberships" value={stats.activeMembers} />
         <Stat label="Upcoming classes" value={stats.upcomingClasses} />
-        <Stat label="AI assessment leads" value={stats.newLeads} />
+        <Stat label="Self-assessment leads" value={stats.newLeads} />
       </dl>
 
       <section className="mt-14">

@@ -6,7 +6,7 @@
  * Until then, any schema migration must be reflected here in the same commit.
  */
 
-export type PlanTier = "group" | "one_to_one" | "squad";
+export type PlanTier = "group" | "one_to_one";
 export type PlanDuration = "monthly" | "quarterly" | "annual";
 export type SubscriptionStatus = "pending" | "active" | "expired" | "cancelled";
 export type UserRole = "member" | "trainer" | "admin";
@@ -77,7 +77,26 @@ export type Lead = {
   email: string | null;
   summary: string | null;
   source: string;
+  // Populated by the scored self-assessment (/assessment) — null for leads
+  // captured any other way, e.g. the old chat-based flow.
+  score: number | null;
+  band: string | null;
+  tier_nudge: PlanTier | null;
+  answers: Record<string, unknown> | null;
   created_at: string;
+}
+
+export type PlanPrice = {
+  tier: PlanTier;
+  monthly_paise: number;
+  updated_at: string;
+}
+
+export type PlanDurationDiscount = {
+  duration: PlanDuration;
+  discount: number;
+  price_confirmed: boolean;
+  updated_at: string;
 }
 
 type Insertable<T, Optional extends keyof T> = Omit<T, Optional> &
@@ -122,9 +141,22 @@ export interface Database {
         Row: Lead;
         Insert: Insertable<
           Lead,
-          "id" | "email" | "summary" | "source" | "created_at"
+          | "id" | "email" | "summary" | "source" | "created_at"
+          | "score" | "band" | "tier_nudge" | "answers"
         >;
         Update: Partial<Lead>;
+        Relationships: [];
+      };
+      plan_prices: {
+        Row: PlanPrice;
+        Insert: Insertable<PlanPrice, "updated_at">;
+        Update: Partial<PlanPrice>;
+        Relationships: [];
+      };
+      plan_duration_discounts: {
+        Row: PlanDurationDiscount;
+        Insert: Insertable<PlanDurationDiscount, "price_confirmed" | "updated_at">;
+        Update: Partial<PlanDurationDiscount>;
         Relationships: [];
       };
     };

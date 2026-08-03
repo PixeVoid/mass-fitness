@@ -8,7 +8,7 @@
 
 ## Status at a glance
 
-Last updated: 2026-07-25. Update this table in the same commit as the work it describes.
+Last updated: 2026-07-29. Update this table in the same commit as the work it describes.
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -16,7 +16,7 @@ Last updated: 2026-07-25. Update this table in the same commit as the work it de
 | 0.5 — SEO foundation | ✅ Done | Metadata API, `sitemap.ts`, `robots.ts`, OG image, JSON-LD all in place. Behind-auth routes now carry `noindex` as well as a robots disallow. |
 | 1 — Landing page | ✅ Done | 3D hero, features, pricing, contact. |
 | 2 — Auth + data capture | ✅ Code complete | **Switched from phone-OTP to email-OTP + Google OAuth 2026-07-25** — see Section 0.3. Profile capture, protected dashboard. Untested against a live Supabase project. |
-| 3 — Subscriptions + PhonePe | ⬜ Not started | Schema and plan catalogue are ready for it. Blocked on merchant account + confirmed pricing. |
+| 3 — Subscriptions + PhonePe | ⬜ Not started | **Squad tier retired 2026-07-29** — Group and One-to-one only now. Monthly prices are admin-editable (`/admin/pricing`, `plan_prices`/`plan_duration_discounts` tables, `src/lib/pricing.ts`) rather than fixed in code; quarterly/annual are now confirmed (10%/20% discount off monthly). Blocked on merchant account only. |
 | 4 — Live classes (LiveKit) | 🟡 Backend done | Token route with the paywall gate, plus a minimal viewer. Needs a real LiveKit project to test. |
 | 5 — Chatbot (Groq) | 🟡 Backend done | `/api/chat` streaming route. No chat UI widget yet — that is the remaining piece. |
 | 6 — Admin dashboard | ✅ Code complete | `/admin` — members (roles + manual membership grants), class scheduling, overview. Removes all the hand-written SQL except the first admin promotion. |
@@ -295,8 +295,8 @@ Two follow-ups from the backend work:
 - Consider enabling Supabase's "linked accounts" setting so a user who signs up by email and later uses Google with the same address doesn't get two separate accounts (Section 0.3, step 5).
 
 ### Phase 3 — Subscriptions + PhonePe payment — ⬜ not started
-- Plan tiers are **tier × duration** — see Section 1. The catalogue is already built at `src/lib/plans.ts`.
-- **Only the monthly prices are confirmed** (Group ₹1,499 / One-to-one ₹2,999 / Squad ₹1,199, taken from the landing page). Quarterly and annual are placeholders derived from a 10% / 20% discount and are flagged `priceConfirmed: false`. `assertChargeable()` throws if an unconfirmed plan reaches a payment call — so Phase 3 cannot quietly bill a made-up number. Delete the flag once real prices are signed off.
+- Plan tiers are **tier × duration** — see Section 1. The catalogue (tier/duration metadata, amortisation math) lives at `src/lib/plans.ts`; the actual numbers are admin-editable and fetched from Supabase at `src/lib/pricing.ts`.
+- **Squad retired 2026-07-29** — only Group and One-to-one are sold now. Monthly prices are ₹2,500 (Group) and ₹5,000 (One-to-one), editable from `/admin/pricing` without a deploy (`plan_prices` table). Quarterly (10% off) and annual (20% off) are derived and **confirmed** (`plan_duration_discounts` table) — `assertChargeable()` still exists as the Phase 3 guard but nothing is a placeholder anymore.
 - `subscriptions.phonepe_merchant_txn_id` is unique: use it as the idempotency key so a replayed callback cannot double-activate a membership.
 - The activation write must use the **service-role** client — there is deliberately no client-side write policy on `subscriptions`.
 - Build `/api/payments/initiate` (Next.js API route) that calls PhonePe's payment-initiation endpoint server-side. **Never expose PhonePe merchant keys client-side.**
@@ -329,15 +329,18 @@ Not built: class scheduling UI — that is Phase 6. Until then, insert rows by h
 
 **Known limit:** the rate limiter is in-process memory (`src/lib/rate-limit.ts`). On Vercel each lambda has its own map, so the real ceiling is roughly 20 × concurrent instances, and it resets on cold start. Fine against a signed-in member; inadequate if the bot is ever opened to anonymous users — move it to Upstash Redis at that point.
 
-### Phase 5.5 — AI assessment (anonymous lead capture) — ✅ code complete
-Not in the original plan — added on request. The "Get your AI assessment" button on the landing hero opens `/assessment`: a short Groq-backed intake chat that needs no account, followed by a form (name, mobile, email, optional note) that writes to a new `leads` table.
+### Phase 5.5 — Self-assessment (anonymous lead capture) — ✅ code complete
+Not in the original plan — added on request. **Replaced 2026-07-29**: the "Get your fitness score" button on the landing hero opens `/assessment`, now a fixed 15-question scored quiz (not a Groq chat) — a numeric 0-100 score, a result band, a plan-tier recommendation, and a PDF report emailed to the visitor, with a WhatsApp follow-up link. No account needed.
 
 **What was built:**
-- `src/app/api/assessment/route.ts` — same streaming shape as `/api/chat` (factored into `src/lib/chat/stream.ts` so both share it), but **no auth check** and rate-limited by IP instead of user id (15 msgs / 10 min). Its own system prompt (`src/lib/chat/assessmentPrompt.ts`) runs an intake conversation and then hands off to the form rather than trying to collect contact details itself.
-- `src/app/api/leads/route.ts` — validates and writes to `leads` via the service role (no client insert policy, same pattern as `chat_logs`). IP rate-limited (5 / 10 min) plus a honeypot field.
-- `supabase/migrations/0003_leads.sql` — `leads` table, admin-readable via RLS (`is_admin()`), otherwise closed.
-- `/admin/leads` — new admin tab listing leads newest-first; overview stats gained an "AI assessment leads" count.
-- `.btn-ai` in `globals.css` — the one deliberate exception to "flat, no glow, no gradient": a slow rotating conic-gradient border on the CTA itself, via a registered `--ai-angle` custom property.
+- `src/lib/assessment/` — `types.ts` (answer shape), `scoring.ts` (pure 4-category scoring: BMI/activity/physical/lifestyle, 25 pts each, rescaled to 100 if the optional physical section is skipped), `labels.ts` (answer copy shared by the UI, PDF and emails), `pdf.tsx` (`@react-pdf/renderer` report), `emailTemplate.ts`, `whatsapp.ts` (prefilled `wa.me` link — see below).
+- `src/components/assessment/AssessmentQuiz.tsx` — multi-step client quiz (5 sections + contact step), replaces the retired `AssessmentChat.tsx`.
+- `src/app/api/assessment/route.ts` — rewritten: validates answers with zod, **re-scores server-side** (never trusts a client-sent score), writes the lead, renders the PDF, emails it via Resend if an email was given, and returns a `wa.me` link plus the PDF as base64 for an in-browser download. Rate-limited by IP (5/10 min) + honeypot, replacing the old chat route and the now-deleted `/api/leads/route.ts`.
+- `supabase/migrations/0005_assessment_scoring.sql` — adds `score`, `band`, `tier_nudge`, `answers` columns to `leads` (all nullable, so pre-existing rows from the old chat flow are unaffected).
+- `/admin/leads` — now shows the score/band next to each lead.
+- **WhatsApp is not yet automated.** Full delivery needs the WhatsApp Business Cloud API (Meta business verification + an approved message template) — deferred; the result screen instead opens a prefilled `wa.me/916207524549` link (same number as the footer/contact section) so the visitor's own tap starts the conversation. Automating it later is a change inside `whatsapp.ts` only.
+- **Email needs `RESEND_API_KEY`** (see `.env.example`) to actually send — without it, `sendEmail()` throws, which the route catches and logs; the visitor still gets the score, the WhatsApp link and the PDF download, just no email.
+- `.btn-ai` in `globals.css` (the CTA's rotating-gradient border) is kept as-is — cosmetic, unrelated to the AI-chat removal.
 
 **Known limit:** same in-process rate limiter as Phase 5, now actually exposed to anonymous traffic rather than just members — move to Upstash Redis if abuse shows up.
 
@@ -463,9 +466,9 @@ Original spec:
 **Still open:**
 
 1. **PhonePe merchant account status** — needed before Phase 3 goes beyond sandbox.
-2. **Quarterly and annual pricing** — the three monthly prices are settled (the landing page's). The longer durations are placeholders at a 10%/20% discount and are code-flagged so they cannot be charged. Tier structure itself is now resolved: tier × duration, confirmed 2026-07-25.
-3. **Chat logging to `chat_logs`** — built but **off by default** (`CHAT_LOG_ENABLED=false`). Switching it on means storing what members ask the bot, which for a fitness product includes things about their body and health. If it goes on, the privacy policy needs to say so and the chat UI should mention it.
-6. **Whether a blog/content section is in scope** — affects Phase 0.5 SEO planning and Phase 1 routing.
+2. **Chat logging to `chat_logs`** — built but **off by default** (`CHAT_LOG_ENABLED=false`). Switching it on means storing what members ask the bot, which for a fitness product includes things about their body and health. If it goes on, the privacy policy needs to say so and the chat UI should mention it.
+3. **Whether a blog/content section is in scope** — affects Phase 0.5 SEO planning and Phase 1 routing.
+4. **WhatsApp Business Cloud API** — Phase 5.5 result delivery uses a prefilled `wa.me` link today. Automating it needs Meta business verification and an approved message template; no lead time estimate until that process is started.
 
 **Resolved:**
 
@@ -478,6 +481,7 @@ Original spec:
 8. ~~Who is a trainer?~~ — resolved. `/admin/members` sets roles and `/admin/classes` assigns trainers. Only the first admin promotion still needs SQL.
 9. **Subscription expiry sweep.** Nothing currently moves a subscription from `active` to `expired` when its term ends. Access checks compare against `end_date` so an expired member is correctly locked out regardless — but the `status` column will drift from reality, and the admin dashboard reads `status`, so it will overstate active memberships. A `pg_cron` job should flip them; worth doing in Phase 3 alongside the payment writes.
 10. **Account linking for email + Google.** If a user signs up with email first and later uses Google with the same address, Supabase creates two separate accounts unless "linked accounts" is enabled in the dashboard (Section 0.3, step 5). Worth confirming this is on before launch.
+11. ~~Quarterly and annual pricing~~ — resolved 2026-07-29. Squad tier retired; Group and One-to-one monthly prices are confirmed (₹2,500 / ₹5,000) and admin-editable at `/admin/pricing`, and quarterly (10% off) / annual (20% off) are now real, confirmed prices rather than placeholders.
 
 ---
 

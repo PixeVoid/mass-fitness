@@ -10,7 +10,7 @@ import {
 } from "@/app/actions/admin";
 import type { Profile, Subscription } from "@/lib/db-types";
 import { formatPhoneForDisplay } from "@/lib/phone";
-import { PLANS, formatPaise, getPlan } from "@/lib/plans";
+import { findPlanById, formatPaise, type Plan } from "@/lib/plans";
 
 /**
  * One member, with the two things an admin actually needs to do to them:
@@ -22,9 +22,11 @@ import { PLANS, formatPaise, getPlan } from "@/lib/plans";
 export default function MemberRow({
   profile,
   subscription,
+  plans,
 }: {
   profile: Profile;
   subscription: Subscription | null;
+  plans: Plan[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -61,7 +63,13 @@ export default function MemberRow({
             </p>
             {subscription && active && (
               <p className="numeric mt-1 text-[0.8125rem] text-faint">
-                {getPlan(subscription.plan_tier, subscription.plan_duration).label}
+                {
+                  plans.find(
+                    (p) =>
+                      p.tier === subscription.plan_tier &&
+                      p.duration === subscription.plan_duration,
+                  )?.label
+                }
                 {" · "}
                 {formatPaise(subscription.amount_paise)}
               </p>
@@ -85,6 +93,7 @@ export default function MemberRow({
           <MembershipForm
             profile={profile}
             subscription={active ? subscription : null}
+            plans={plans}
           />
         </div>
       )}
@@ -124,9 +133,11 @@ function RoleForm({ profile }: { profile: Profile }) {
 function MembershipForm({
   profile,
   subscription,
+  plans,
 }: {
   profile: Profile;
   subscription: Subscription | null;
+  plans: Plan[];
 }) {
   const [grantState, grantAction] = useActionState<ActionState, FormData>(
     grantMembership,
@@ -137,8 +148,8 @@ function MembershipForm({
     {},
   );
 
-  const [planId, setPlanId] = useState(PLANS[0].id);
-  const selected = PLANS.find((p) => p.id === planId) ?? PLANS[0];
+  const [planId, setPlanId] = useState(plans[0].id);
+  const selected = findPlanById(plans, planId) ?? plans[0];
 
   return (
     <div className="flex flex-col gap-3">
@@ -158,7 +169,7 @@ function MembershipForm({
           onChange={(e) => setPlanId(e.target.value)}
           className="field"
         >
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <option key={plan.id} value={plan.id}>
               {plan.label} · {plan.durationLabel}
               {plan.priceConfirmed ? "" : " (price unconfirmed)"}

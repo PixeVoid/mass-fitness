@@ -1,3 +1,5 @@
+import type { Plan } from "@/lib/plans";
+
 const siteUrl = "https://massfitness.in";
 
 const organizationSchema = {
@@ -25,41 +27,37 @@ const organizationSchema = {
   ],
 };
 
-const serviceSchema = {
-  "@context": "https://schema.org",
-  "@type": "Service",
-  serviceType: "Online fitness training",
-  provider: {
-    "@type": "Organization",
-    name: "Mass Fitness",
-  },
-  areaServed: "IN",
-  offers: [
-    {
-      "@type": "Offer",
-      name: "Group Training",
-      price: "1499",
-      priceCurrency: "INR",
-      category: "Subscription — per month",
-    },
-    {
-      "@type": "Offer",
-      name: "One-to-One Personalized Training",
-      price: "2999",
-      priceCurrency: "INR",
-      category: "Subscription — per month",
-    },
-    {
-      "@type": "Offer",
-      name: "Squad Training",
-      price: "1199",
-      priceCurrency: "INR",
-      category: "Subscription — per month, per person, min. 2 participants",
-    },
-  ],
+const OFFER_NAMES: Record<string, string> = {
+  group: "Group Training",
+  one_to_one: "One-to-One Personalized Training",
 };
 
-export function StructuredData() {
+/** Prices are admin-editable (src/lib/pricing.ts), so this schema is built
+ * from the same monthly catalogue the pricing section renders — never a
+ * hardcoded figure that could drift from what's actually charged. */
+function buildServiceSchema(monthlyPlans: Plan[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    serviceType: "Online fitness training",
+    provider: {
+      "@type": "Organization",
+      name: "Mass Fitness",
+    },
+    areaServed: "IN",
+    offers: monthlyPlans.map((plan) => ({
+      "@type": "Offer",
+      name: OFFER_NAMES[plan.tier] ?? plan.label,
+      price: String(Math.round(plan.amountPaise / 100)),
+      priceCurrency: "INR",
+      category: "Subscription — per month",
+    })),
+  };
+}
+
+export function StructuredData({ monthlyPlans }: { monthlyPlans: Plan[] }) {
+  const serviceSchema = buildServiceSchema(monthlyPlans);
+
   return (
     <>
       <script
