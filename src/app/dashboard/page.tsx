@@ -20,7 +20,16 @@ export const metadata: Metadata = {
 // otherwise try to prerender this at build time and fail.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+const NOTICES: Record<string, string> = {
+  subscribed: "You're in. Your membership is active and live classes are unlocked.",
+  "already-subscribed": "You already have an active membership — nothing more to pay.",
+};
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
   // The schedule and the price list are the same for everyone, so neither has
   // to wait to find out who is asking. Started here, they overlap the session
   // read instead of queueing behind it — this page used to run profile, then
@@ -28,16 +37,21 @@ export default async function DashboardPage() {
   // the sum of all of them.
   const classesPromise = getUpcomingClasses();
   const cataloguePromise = getPricingCatalogue();
+  const noticeParam = searchParams.then((params) => params.notice);
 
   // Redirects to /login when signed out and /onboarding when the profile is
   // incomplete — the proxy's optimistic check is not relied on here.
   const profile = await requireOnboardedProfile();
 
-  const [subscription, classes] = await Promise.all([
+  // cataloguePromise is awaited but unread: it is in here to be *resolved*
+  // before getPlan asks for it below, not for its value.
+  const [subscription, classes, noticeKey] = await Promise.all([
     getActiveSubscription(),
     classesPromise,
+    noticeParam,
     cataloguePromise,
   ]);
+  const notice = noticeKey ? NOTICES[noticeKey] : undefined;
 
   // Resolves off the already-warm catalogue rather than issuing its own query.
   const plan = subscription
@@ -70,6 +84,15 @@ export default async function DashboardPage() {
           </form>
         </div>
       </div>
+
+      {notice && (
+        <p
+          role="status"
+          className="mt-10 border-l border-line-strong pl-5 text-[0.9375rem] leading-relaxed text-ink"
+        >
+          {notice}
+        </p>
+      )}
 
       {/* MEMBERSHIP */}
       <section className="mt-14 border-t border-line pt-8 sm:mt-20">
@@ -105,9 +128,7 @@ export default async function DashboardPage() {
               You don&apos;t have an active membership yet. Live classes stay
               locked until one is active.
             </p>
-            {/* Points at the pricing section until Phase 3 ships a real
-                checkout at /subscribe. */}
-            <Link href="/#pricing" className="btn btn-solid mt-6">
+            <Link href="/subscribe" className="btn btn-solid mt-6">
               See the plans
             </Link>
           </div>
@@ -161,7 +182,7 @@ export default async function DashboardPage() {
 
                   <div className="lg:col-span-3 lg:justify-self-end">
                     {locked ? (
-                      <Link href="/#pricing" className="btn btn-outline w-full sm:w-auto">
+                      <Link href="/subscribe" className="btn btn-outline w-full sm:w-auto">
                         Members only
                       </Link>
                     ) : window === "open" ? (

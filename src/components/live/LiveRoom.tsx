@@ -54,7 +54,7 @@ const ERRORS: Record<string, { message: string; href?: string; label?: string }>
     unauthenticated: { message: "Your session expired. Log in again.", href: "/login", label: "Log in" },
     subscription_required: {
       message: "This class is for members. Pick a plan to join live sessions.",
-      href: "/#pricing",
+      href: "/subscribe",
       label: "See the plans",
     },
     class_not_found: { message: "That class no longer exists." },

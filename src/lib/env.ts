@@ -73,6 +73,35 @@ export const serverEnv = {
   get chatModel() {
     return process.env.CHAT_MODEL ?? "llama-3.3-70b-versatile";
   },
+  /**
+   * Payments (Phase 3). "mock" walks the whole flow without credentials while
+   * the PhonePe merchant account is being registered — see lib/payments/mock.
+   */
+  get paymentProvider(): "phonepe" | "mock" {
+    return process.env.PAYMENT_PROVIDER === "mock" ? "mock" : "phonepe";
+  },
+  get phonePeClientId() {
+    return required("PHONEPE_CLIENT_ID");
+  },
+  get phonePeClientSecret() {
+    return required("PHONEPE_CLIENT_SECRET");
+  },
+  get phonePeClientVersion() {
+    return process.env.PHONEPE_CLIENT_VERSION ?? "1";
+  },
+  /** Sandbox unless explicitly switched — never default to charging real cards. */
+  get phonePeEnvironment(): "sandbox" | "production" {
+    return process.env.PHONEPE_ENVIRONMENT === "production"
+      ? "production"
+      : "sandbox";
+  },
+  get phonePeWebhookUsername() {
+    return required("PHONEPE_WEBHOOK_USERNAME");
+  },
+  get phonePeWebhookPassword() {
+    return required("PHONEPE_WEBHOOK_PASSWORD");
+  },
+
   /** Self-assessment result emails (Phase 5.5). Resend's free tier covers MVP volume. */
   get resendApiKey() {
     return required("RESEND_API_KEY");

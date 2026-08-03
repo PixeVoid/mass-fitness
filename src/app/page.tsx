@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import ClassGrid from "@/components/ClassGrid";
 import Footer from "@/components/Footer";
 import SectionHeading from "@/components/SectionHeading";
@@ -187,9 +188,16 @@ export default async function Home() {
                     ))}
                   </ul>
 
-                  <a href="#contact" className="btn plan-cta mt-10 w-full">
+                  {/* Straight into checkout with this tier preselected.
+                      /subscribe is behind auth, so an anonymous visitor gets
+                      the login screen and lands back here after — one redirect
+                      rather than a mailto and a hope. */}
+                  <Link
+                    href={`/subscribe?plan=${plan.id}`}
+                    className="btn plan-cta mt-10 w-full"
+                  >
                     Choose {plan.label.toLowerCase()}
-                  </a>
+                  </Link>
                 </div>
               );
             })}

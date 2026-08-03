@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     const subscription = await getActiveSubscription();
     if (!subscription) {
       return json(
-        { error: "subscription_required", redirectTo: "/#pricing" },
+        { error: "subscription_required", redirectTo: "/subscribe" },
         403,
       );
     }

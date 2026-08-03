@@ -6,7 +6,16 @@
  */
 
 /** Requires a signed-in user. Anonymous visitors get bounced to /login. */
-const AUTHED_PREFIXES = ["/dashboard", "/onboarding", "/live", "/admin"];
+const AUTHED_PREFIXES = [
+  "/dashboard",
+  "/onboarding",
+  "/live",
+  "/admin",
+  // Checkout needs an account for the membership to attach to, so an
+  // anonymous visitor is sent to log in and returned here afterwards rather
+  // than getting halfway through paying and then being asked who they are.
+  "/subscribe",
+];
 
 /** Auth entry points — pointless to show to someone already signed in. */
 const AUTH_ENTRY_PREFIXES = ["/login"];
