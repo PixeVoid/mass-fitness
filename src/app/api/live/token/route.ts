@@ -1,17 +1,21 @@
-import { AccessToken, TrackSource, type VideoGrant } from "livekit-server-sdk";
 import * as z from "zod";
 import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
 import { getClassById } from "@/lib/classes";
-import { serverEnv } from "@/lib/env";
+import { getVideoProvider } from "@/lib/video/livekit";
 
 /**
- * POST /api/live/token — mints a LiveKit join token (BUILD_PLAN 3.5).
+ * POST /api/live/token — mints a room join token (BUILD_PLAN 3.5).
  *
- * This route *is* the paywall. LiveKit will not admit a participant without a
- * token signed by our secret, so a user who is refused here cannot join by
- * any other means — there is no shareable link that bypasses it. Everything
- * it decides is re-derived server-side; nothing from the request body is
- * trusted beyond the class id.
+ * This route *is* the paywall. The video provider will not admit a participant
+ * without a token signed by our secret, so a user who is refused here cannot
+ * join by any other means — there is no shareable link that bypasses it.
+ * Everything it decides is re-derived server-side; nothing from the request
+ * body is trusted beyond the class id.
+ *
+ * Which provider mints the token is decided behind `getVideoProvider()`, and
+ * this route deliberately knows nothing about it. That keeps the access
+ * decision — the part worth being careful about — untouched by a change of
+ * video vendor.
  */
 
 // Reads cookies and the database — never a candidate for prerendering.
@@ -82,50 +86,24 @@ export async function POST(request: Request) {
     }
   }
 
-  const grant: VideoGrant = {
+  const provider = getVideoProvider();
+  const room = await provider.createRoomToken({
     room: fitnessClass.livekit_room,
-    roomJoin: true,
-    // Members publish too. A coach correcting your setup is the product — it
-    // cannot work if the coach can't see you — so everyone in the room may
-    // open a camera and mic. Publishing is *permitted*, not started: the
-    // client joins with both off and the member turns them on, so nobody gets
-    // a permission prompt for walking into a class.
-    canPublish: true,
-    canSubscribe: true,
-    // Screen share stays with the host. A member sharing their desktop into a
-    // class is never the intent, and it is the one publish that can put
-    // something private on the main stage in front of everyone.
-    // canPublishSources supersedes canPublish where it is set, so this is the
-    // flag that actually decides — the SDK maps the enum to the wire strings.
-    canPublishSources: isHost
-      ? [
-          TrackSource.CAMERA,
-          TrackSource.MICROPHONE,
-          TrackSource.SCREEN_SHARE,
-          TrackSource.SCREEN_SHARE_AUDIO,
-        ]
-      : [TrackSource.CAMERA, TrackSource.MICROPHONE],
-    // Lets participants use chat/reactions without opening a media track.
-    canPublishData: true,
-    canUpdateOwnMetadata: false,
-  };
-
-  const token = new AccessToken(
-    serverEnv.livekitApiKey,
-    serverEnv.livekitApiSecret,
-    {
-      // Supabase user id, so a LiveKit participant is traceable back to a row.
-      identity: user.id,
-      name: profile?.name ?? "Member",
-      ttl: TOKEN_TTL_SECONDS,
-    },
-  );
-  token.addGrant(grant);
+    // Our own user id, so a participant in the provider's dashboard traces
+    // back to a row here.
+    identity: user.id,
+    displayName: profile?.name ?? "Member",
+    isHost,
+    ttlSeconds: TOKEN_TTL_SECONDS,
+  });
 
   return json(
     {
-      token: await token.toJwt(),
-      serverUrl: serverEnv.livekitUrl,
+      // `provider` travels with the token so the client knows which stage
+      // component to render — that is the client half of the seam.
+      provider: room.provider,
+      token: room.token,
+      serverUrl: room.serverUrl,
       room: fitnessClass.livekit_room,
       role: isHost ? "host" : "viewer",
       classTitle: fitnessClass.title,

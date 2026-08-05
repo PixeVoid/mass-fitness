@@ -102,6 +102,15 @@ export const serverEnv = {
     return required("PHONEPE_WEBHOOK_PASSWORD");
   },
 
+  /**
+   * Shared secret for /api/cron/*. Returns "" when unset, and the routes
+   * refuse rather than running open — an endpoint that emails every member is
+   * not something to leave unauthenticated by accident.
+   */
+  get cronSecret() {
+    return process.env.CRON_SECRET ?? "";
+  },
+
   /** Self-assessment result emails (Phase 5.5). Resend's free tier covers MVP volume. */
   get resendApiKey() {
     return required("RESEND_API_KEY");

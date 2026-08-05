@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 import { getActiveSubscription, requireOnboardedProfile } from "@/lib/auth/dal";
+import NextClassBanner from "@/components/classes/NextClassBanner";
 import {
+  buildNextClass,
   classWindow,
   formatClassTime,
   getUpcomingClasses,
@@ -61,6 +63,12 @@ export default async function DashboardPage({
   // Trainers and admins run classes rather than buy them.
   const isStaff = profile.role === "trainer" || profile.role === "admin";
 
+  const { nextClass, nowMs } = buildNextClass(
+    classes,
+    profile,
+    Boolean(subscription),
+  );
+
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
@@ -77,6 +85,11 @@ export default async function DashboardPage({
               Admin
             </Link>
           )}
+          {(profile.role === "trainer" || profile.role === "admin") && (
+            <Link href="/coach" className="btn btn-outline">
+              Schedule
+            </Link>
+          )}
           <form action={signOut}>
             <button type="submit" className="btn btn-outline">
               Sign out
@@ -84,6 +97,10 @@ export default async function DashboardPage({
           </form>
         </div>
       </div>
+
+      {nextClass && (
+        <NextClassBanner nextClass={nextClass} serverNowMs={nowMs} />
+      )}
 
       {notice && (
         <p

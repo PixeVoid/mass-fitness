@@ -2,41 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  StartAudio,
-  TrackToggle,
-  VideoTrack,
-  useConnectionState,
-  useLocalParticipant,
-  useTracks,
-} from "@livekit/components-react";
-import { ConnectionState, Track } from "livekit-client";
+import LiveKitStage from "./livekit/LiveKitStage";
 
 /**
- * Class room (BUILD_PLAN 3.6).
+ * Class viewer (BUILD_PLAN 3.6) — the provider-agnostic half.
  *
- * Two-way, not a broadcast. A coach correcting your setup is what people are
- * paying for, and that cannot work one-way — so every participant may open a
- * camera and mic, and the trainer sees whoever has.
+ * Asks /api/live/token who this member is and whether they may join, then
+ * hands off to whichever stage the answer names. Everything here is about
+ * getting in: fetching the token, and turning a refusal into copy someone can
+ * act on. None of it changes if the video vendor does.
  *
- * The stage stays single-focus: the trainer (or their screen share) fills it,
- * and members appear as a strip of small tiles. A symmetric grid would be the
- * wrong shape for this — in a class you watch one person and are glanced at,
- * you do not study fifteen equals.
- *
- * Camera and mic start **off** for everyone, including the trainer. The token
- * permits publishing; it does not begin it. Nobody gets a permission prompt
- * for walking into a class, and nobody is broadcast from their bedroom by a
- * default they did not choose.
- *
- * Laid out for a phone propped against a wall mid-workout: video fills the
- * screen, controls sit in a bottom bar within thumb reach rather than in a
- * shrunk desktop toolbar.
+ * `provider` comes back with the token rather than being read from an env var
+ * on this side, so a swap is a server-side decision and a client that is
+ * mid-navigation during a deploy cannot mismatch the two.
  */
 
 interface TokenResponse {
+  provider: string;
   token: string;
   serverUrl: string;
   room: string;
@@ -135,158 +117,32 @@ export default function LiveRoom({ classId }: { classId: string }) {
     );
   }
 
-  const { token, serverUrl, role, classTitle } = phase.data;
+  const { provider, token, serverUrl, role, classTitle } = phase.data;
 
-  return (
-    <LiveKitRoom
-      token={token}
-      serverUrl={serverUrl}
-      connect
-      // Joined dark and silent, host included. Both are one tap away in the
-      // bottom bar; neither is imposed. This is also what keeps a member from
-      // ever seeing a browser permission prompt they did not ask for.
-      video={false}
-      audio={false}
-      className="flex min-h-dvh flex-col bg-inverse-bg"
-    >
-      {/* Renders every subscribed audio track. Without it the class is silent. */}
-      <RoomAudioRenderer />
-      <Stage title={classTitle} isHost={role === "host"} />
-    </LiveKitRoom>
-  );
-}
-
-function Stage({ title, isHost }: { title: string; isHost: boolean }) {
-  const connectionState = useConnectionState();
-  const { localParticipant } = useLocalParticipant();
-  const tracks = useTracks(
-    [Track.Source.Camera, Track.Source.ScreenShare],
-    { onlySubscribed: false },
-  );
-
-  // Screen share wins the stage when the trainer is demonstrating something on
-  // screen; otherwise the host's camera does. Falling back to "whatever was
-  // published first" would let an early member take the stage from the coach.
-  const screenShare = tracks.find(
-    (track) => track.source === Track.Source.ScreenShare,
-  );
-  const hostCamera = tracks.find(
-    (track) =>
-      track.source === Track.Source.Camera && isHostIdentity(track.participant),
-  );
-  const stageTrack = screenShare ?? hostCamera;
-
-  // Everyone else with a camera on, minus whoever is already on the stage.
-  const strip = tracks.filter(
-    (track) =>
-      track.source === Track.Source.Camera && track !== stageTrack,
-  );
-
-  return (
-    <>
-      <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <p className="label text-[color:var(--inverse-fg)] opacity-60">
-            {connectionState === ConnectionState.Connected ? "Live" : "Connecting"}
-          </p>
-          <h1 className="display-sm mt-1 truncate text-lg text-[color:var(--inverse-fg)]">
-            {title}
-          </h1>
-        </div>
-
-        <Link
-          href="/dashboard"
-          className="btn shrink-0 border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-        >
-          Leave
-        </Link>
-      </header>
-
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-        {stageTrack ? (
-          <VideoTrack
-            trackRef={stageTrack}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <p className="px-6 text-center text-[0.9375rem] text-[color:var(--inverse-fg)] opacity-70">
-            {isHost
-              ? "You're live. Turn on your camera below to start the class."
-              : "Waiting for your trainer to start the class…"}
-          </p>
-        )}
-
-        {/* Browsers block autoplaying audio until the user interacts. This
-            renders a prompt only when that block is actually in effect. */}
-        <StartAudio
-          label="Tap for sound"
-          className="btn btn-solid absolute bottom-4 left-1/2 -translate-x-1/2"
+  // One case today. A second provider is a second case here and a sibling of
+  // LiveKitStage — not an edit to it.
+  switch (provider) {
+    case "livekit":
+      return (
+        <LiveKitStage
+          token={token}
+          serverUrl={serverUrl}
+          role={role}
+          classTitle={classTitle}
         />
-      </div>
-
-      {/* Whoever has their camera on. Scrolls horizontally rather than
-          wrapping into rows that eat the stage on a phone. */}
-      {strip.length > 0 && (
-        <ul className="flex shrink-0 gap-2 overflow-x-auto px-4 pb-1 pt-2 sm:px-6">
-          {strip.map((track) => (
-            <li
-              key={track.participant.identity + track.source}
-              className="relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl bg-black/40 sm:w-36"
-            >
-              <VideoTrack trackRef={track} className="h-full w-full object-cover" />
-              <span className="absolute inset-x-0 bottom-0 truncate bg-black/45 px-2 py-1 text-[0.6875rem] text-white">
-                {track.participant.name || "Member"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Controls for everyone now, not just the host — the toggles are the
-          whole point of letting members publish. */}
-      <div className="flex items-center justify-center gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <TrackToggle
-          source={Track.Source.Microphone}
-          className="btn border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-        >
-          Mic
-        </TrackToggle>
-        <TrackToggle
-          source={Track.Source.Camera}
-          className="btn border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-        >
-          Camera
-        </TrackToggle>
-        {isHost && (
-          <TrackToggle
-            source={Track.Source.ScreenShare}
-            className="btn hidden border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)] sm:inline-flex"
-          >
-            Share
-          </TrackToggle>
-        )}
-      </div>
-
-      {!isHost && localParticipant.isCameraEnabled && (
-        <p className="pb-2 text-center text-[0.6875rem] text-[color:var(--inverse-fg)] opacity-50">
-          Your camera is on — your coach can see you.
-        </p>
-      )}
-    </>
-  );
-}
-
-/**
- * Who is running the class, as seen from the client.
- *
- * Screen share is host-only at the token level, so a participant publishing
- * one is provably the host. Beyond that the client has no trustworthy signal —
- * and it does not need one: this only decides which tile is biggest. The
- * decisions that matter were made when the token was minted.
- */
-function isHostIdentity(participant: { permissions?: { canPublishSources?: unknown[] } }) {
-  const sources = participant.permissions?.canPublishSources;
-  return Array.isArray(sources) && sources.length > 2;
+      );
+    default:
+      // Only reachable if the server is deployed ahead of the client — a stale
+      // tab during a provider switch. Say so rather than render nothing; a
+      // reload fixes it.
+      return (
+        <Centered>
+          <p className="max-w-sm text-center text-[0.9375rem] leading-relaxed text-muted">
+            This class needs a newer version of the app. Reload the page.
+          </p>
+        </Centered>
+      );
+  }
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

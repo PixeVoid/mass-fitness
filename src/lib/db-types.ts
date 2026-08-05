@@ -48,6 +48,13 @@ export type Subscription = {
   updated_at: string;
 }
 
+export type ClassReminder = {
+  class_id: string;
+  user_id: string;
+  kind: string;
+  sent_at: string;
+}
+
 export type Post = {
   id: string;
   slug: string;
@@ -176,6 +183,12 @@ export interface Database {
         Row: PlanPrice;
         Insert: Insertable<PlanPrice, "updated_at">;
         Update: Partial<PlanPrice>;
+        Relationships: [];
+      };
+      class_reminders: {
+        Row: ClassReminder;
+        Insert: Insertable<ClassReminder, "kind" | "sent_at">;
+        Update: Partial<ClassReminder>;
         Relationships: [];
       };
       posts: {

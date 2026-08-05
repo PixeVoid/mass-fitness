@@ -147,6 +147,34 @@ export const isAdmin = cache(async (): Promise<boolean> => {
   return profile?.role === "admin";
 });
 
+export const isCoach = cache(async (): Promise<boolean> => {
+  const profile = await getProfile();
+  return profile?.role === "trainer" || profile?.role === "admin";
+});
+
+/**
+ * Gate for /coach — anyone who runs classes.
+ *
+ * Admins pass too, so an admin can see what a coach sees without swapping
+ * accounts. It is not a substitute for the ownership checks: this only says
+ * "you are staff", and every write underneath still scopes itself to the
+ * caller's own classes, with the `classes: coach ...` policies in Postgres
+ * behind that.
+ *
+ * `notFound()` rather than a redirect, for the same reason `requireAdmin` uses
+ * it — a staff area that announces itself to every member is an invitation.
+ */
+export const requireCoach = cache(async (): Promise<Profile> => {
+  await requireUser();
+  const profile = await getProfile();
+
+  if (!profile || (profile.role !== "trainer" && profile.role !== "admin")) {
+    notFound();
+  }
+
+  return profile;
+});
+
 /**
  * Gate for everything under /admin.
  *

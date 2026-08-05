@@ -11,6 +11,7 @@ const AUTHED_PREFIXES = [
   "/onboarding",
   "/live",
   "/admin",
+  "/coach",
   // Checkout needs an account for the membership to attach to, so an
   // anonymous visitor is sent to log in and returned here afterwards rather
   // than getting halfway through paying and then being asked who they are.
