@@ -10,6 +10,12 @@ import {
   getUpcomingClasses,
 } from "@/lib/classes";
 import { formatPaise } from "@/lib/plans";
+import {
+  filterClassesForMember,
+  getMyGroupIds,
+  getMyGroups,
+  needsGroup,
+} from "@/lib/groups";
 import { getPlan, getPricingCatalogue } from "@/lib/pricing";
 
 export const metadata: Metadata = {
@@ -25,6 +31,8 @@ export const dynamic = "force-dynamic";
 const NOTICES: Record<string, string> = {
   subscribed: "You're in. Your membership is active and live classes are unlocked.",
   "already-subscribed": "You already have an active membership — nothing more to pay.",
+  "group-joined": "You're in the group. Your coach knows you're coming.",
+  "coach-assigned": "Your coach has been told. They'll be in touch to agree your times.",
 };
 
 export default async function DashboardPage({
@@ -55,16 +63,27 @@ export default async function DashboardPage({
   ]);
   const notice = noticeKey ? NOTICES[noticeKey] : undefined;
 
+  // Trainers and admins run classes rather than buy them.
+  const isStaff = profile.role === "trainer" || profile.role === "admin";
+
   // Resolves off the already-warm catalogue rather than issuing its own query.
   const plan = subscription
     ? await getPlan(subscription.plan_tier, subscription.plan_duration)
     : null;
 
-  // Trainers and admins run classes rather than buy them.
-  const isStaff = profile.role === "trainer" || profile.role === "admin";
+  // Which classes are actually this member's. Staff see the whole schedule —
+  // a coach needs to know what else is running, and an unassigned coach would
+  // otherwise see nothing at all.
+  const groupIds = isStaff ? [] : await getMyGroupIds(profile.id);
+  const myGroups = isStaff ? [] : await getMyGroups(profile.id);
+  const visibleClasses = isStaff
+    ? classes
+    : await filterClassesForMember(classes, groupIds);
+
+  const awaitingGroup = needsGroup(profile, Boolean(subscription), groupIds.length);
 
   const { nextClass, nowMs } = buildNextClass(
-    classes,
+    visibleClasses,
     profile,
     Boolean(subscription),
   );
@@ -97,6 +116,19 @@ export default async function DashboardPage({
           </form>
         </div>
       </div>
+
+      {awaitingGroup && (
+        <div className="mt-10 rounded-2xl border border-line bg-surface p-6 sm:p-8">
+          <p className="label text-faint">One step left</p>
+          <p className="mt-4 max-w-lg text-[0.9375rem] leading-relaxed text-ink">
+            Your membership is active, but you haven&rsquo;t picked a group yet
+            — so there&rsquo;s nothing on your schedule. It takes a moment.
+          </p>
+          <Link href="/subscribe/group" className="btn btn-solid mt-6">
+            Pick your group
+          </Link>
+        </div>
+      )}
 
       {nextClass && (
         <NextClassBanner nextClass={nextClass} serverNowMs={nowMs} />
@@ -154,16 +186,25 @@ export default async function DashboardPage({
 
       {/* CLASSES */}
       <section className="mt-14 border-t border-line pt-8 sm:mt-20">
-        <h2 className="label text-faint">Upcoming classes</h2>
+        <h2 className="label text-faint">
+          {isStaff ? "Upcoming classes" : "Your classes"}
+        </h2>
 
-        {classes.length === 0 ? (
+        {myGroups.length > 0 && (
+          <p className="mt-4 text-[0.9375rem] text-muted">
+            You&rsquo;re in{" "}
+            {myGroups.map((group) => group.name).join(", ")}.
+          </p>
+        )}
+
+        {visibleClasses.length === 0 ? (
           <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
             Nothing on the schedule yet. New sessions are published a week
             ahead.
           </p>
         ) : (
           <ul className="mt-6">
-            {classes.map((item) => {
+            {visibleClasses.map((item) => {
               const window = classWindow(item);
               // Mirrors the rule in /api/live/token: whoever is running the
               // class is not a customer of it. Without this a trainer whose

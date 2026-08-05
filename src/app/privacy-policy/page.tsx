@@ -23,6 +23,7 @@ export default function PrivacyPolicyPage() {
             "Billing / shipping address",
             "Payment information (processed securely via third-party payment gateways)",
             "Health and fitness goals you voluntarily provide",
+            "Your answers to the free self-assessment, and the score calculated from them",
             "Your conversations with the in-app fitness assistant, including anything about your body or training you choose to type into it",
             "Browser type, operating system, and browsing behaviour (non-personal)",
           ]}
@@ -38,6 +39,7 @@ export default function PrivacyPolicyPage() {
             "To send promotional emails if you have opted in (unsubscribe at any time)",
             "To analyse user behaviour and improve our platform experience",
             "To personalise the workout and diet plans assigned to you",
+            "To share your self-assessment answers and score with the coach who trains you, once you join a training group — so they can plan around your goals, experience and any limitations you told us about",
           ]}
         />
       </Section>

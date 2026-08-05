@@ -11,6 +11,9 @@ export type PlanDuration = "monthly" | "quarterly" | "annual";
 export type SubscriptionStatus = "pending" | "active" | "expired" | "cancelled";
 export type UserRole = "member" | "trainer" | "admin";
 export type ClassStatus = "scheduled" | "live" | "ended" | "cancelled";
+export type GroupKind = "group" | "one_to_one";
+/** Who a class is for. "all" is every member; "groups" is the targeted ones. */
+export type ClassAudience = "all" | "groups";
 
 // Type aliases rather than interfaces throughout: the Supabase client
 // constrains each table's Row to `Record<string, unknown>`, and TypeScript
@@ -28,6 +31,8 @@ export type Profile = {
   email: string | null;
   fitness_goal: string | null;
   role: UserRole;
+  /** How many one-to-one clients this coach will take. 0 = not offering them. */
+  one_to_one_capacity: number;
   onboarded_at: string | null;
   created_at: string;
   updated_at: string;
@@ -46,6 +51,30 @@ export type Subscription = {
   end_date: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type TrainingGroup = {
+  id: string;
+  name: string;
+  focus: string;
+  trainer_id: string | null;
+  kind: GroupKind;
+  capacity: number;
+  schedule_hint: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GroupMember = {
+  group_id: string;
+  user_id: string;
+  joined_at: string;
+}
+
+export type ClassGroup = {
+  class_id: string;
+  group_id: string;
 }
 
 export type ClassReminder = {
@@ -89,6 +118,9 @@ export type FitnessClass = {
   duration_minutes: number;
   livekit_room: string;
   is_premium: boolean;
+  // Who the class is for. 'all' predates training groups and stays the
+  // default, so every class written before 0009 is still open to every member.
+  audience: ClassAudience;
   status: ClassStatus;
   created_at: string;
   updated_at: string;
@@ -158,7 +190,7 @@ export interface Database {
         Insert: Insertable<
           FitnessClass,
           "id" | "trainer_name" | "trainer_id" | "duration_minutes" |
-          "is_premium" | "status" | "created_at" | "updated_at"
+          "is_premium" | "audience" | "status" | "created_at" | "updated_at"
         >;
         Update: Partial<FitnessClass>;
         Relationships: [];
@@ -183,6 +215,28 @@ export interface Database {
         Row: PlanPrice;
         Insert: Insertable<PlanPrice, "updated_at">;
         Update: Partial<PlanPrice>;
+        Relationships: [];
+      };
+      training_groups: {
+        Row: TrainingGroup;
+        Insert: Insertable<
+          TrainingGroup,
+          | "id" | "focus" | "trainer_id" | "kind" | "capacity"
+          | "schedule_hint" | "active" | "created_at" | "updated_at"
+        >;
+        Update: Partial<TrainingGroup>;
+        Relationships: [];
+      };
+      group_members: {
+        Row: GroupMember;
+        Insert: Insertable<GroupMember, "joined_at">;
+        Update: Partial<GroupMember>;
+        Relationships: [];
+      };
+      class_groups: {
+        Row: ClassGroup;
+        Insert: ClassGroup;
+        Update: Partial<ClassGroup>;
         Relationships: [];
       };
       class_reminders: {

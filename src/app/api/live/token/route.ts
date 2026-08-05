@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
 import { getClassById } from "@/lib/classes";
+import { memberMayJoinClass } from "@/lib/groups";
 import { getVideoProvider } from "@/lib/video/livekit";
 
 /**
@@ -81,6 +82,16 @@ export async function POST(request: Request) {
     if (!subscription) {
       return json(
         { error: "subscription_required", redirectTo: "/subscribe" },
+        403,
+      );
+    }
+
+    // Paying is necessary but no longer sufficient: a class aimed at specific
+    // groups admits only their members. Hosts are past this block entirely —
+    // a coach runs whatever they are assigned to.
+    if (!(await memberMayJoinClass(fitnessClass, user.id))) {
+      return json(
+        { error: "not_in_group", redirectTo: "/dashboard" },
         403,
       );
     }

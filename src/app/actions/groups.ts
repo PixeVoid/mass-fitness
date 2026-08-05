@@ -1,0 +1,245 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import * as z from "zod";
+import {
+  getActiveSubscription,
+  requireOnboardedProfile,
+} from "@/lib/auth/dal";
+import { sendEmail } from "@/lib/email/resend";
+import { buildNewMemberEmail } from "@/lib/groups/newMemberEmail";
+import { publicEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * Joining a training group.
+ *
+ * Service role throughout, because the rules that decide whether a join is
+ * allowed cannot be expressed as an RLS policy: they depend on the member
+ * having an active subscription *of the matching tier*. `group_members` has
+ * no self-insert policy at all, so this action is the only way in.
+ *
+ * Capacity is not checked here. A count-then-insert loses the race when two
+ * people take the last slot at once, so the database enforces it in a trigger
+ * (0009) and this catches the rejection.
+ */
+
+export interface GroupState {
+  error?: string;
+}
+
+const joinSchema = z.object({ groupId: z.string().uuid() });
+
+export async function joinGroup(
+  _prev: GroupState,
+  formData: FormData,
+): Promise<GroupState> {
+  const profile = await requireOnboardedProfile();
+  const subscription = await getActiveSubscription();
+
+  if (!subscription) {
+    redirect("/subscribe");
+  }
+
+  const parsed = joinSchema.safeParse({ groupId: formData.get("groupId") });
+  if (!parsed.success) return { error: "Pick a group." };
+
+  const supabase = createAdminClient();
+
+  const { data: group } = await supabase
+    .from("training_groups")
+    .select("*")
+    .eq("id", parsed.data.groupId)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!group) return { error: "That group isn't available any more." };
+
+  // The tier check. A Group membership does not open a one-to-one cohort, and
+  // — per the pricing decision — a one-to-one membership does not open the
+  // shared groups either. Each tier buys exactly its own kind of session.
+  const expected = subscription.plan_tier === "one_to_one" ? "one_to_one" : "group";
+  if (group.kind !== expected) {
+    return { error: "That group isn't part of your plan." };
+  }
+
+  const { error } = await supabase.from("group_members").insert({
+    group_id: group.id,
+    user_id: profile.id,
+  });
+
+  if (error) {
+    // Raised by enforce_group_capacity(). Someone took the last place between
+    // the page rendering and the form posting.
+    if (error.message.includes("group_full")) {
+      return { error: "That group just filled up. Pick another." };
+    }
+    if (error.code === "23505") {
+      // Already in it — treat as success rather than an error the member can
+      // do nothing about.
+      redirect("/dashboard?notice=group-joined");
+    }
+    console.error("[groups] join failed", error);
+    return { error: "Couldn't join that group. Try again." };
+  }
+
+  await notifyCoach(group.trainer_id, group.name, profile.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/coach");
+  redirect("/dashboard?notice=group-joined");
+}
+
+const pickCoachSchema = z.object({ coachId: z.string().uuid() });
+
+/**
+ * One-to-one: there is no group to join yet, so picking a coach creates one.
+ *
+ * A cohort of exactly one, named after the member. Everything downstream —
+ * scheduling, targeting, reminders, the join check — then treats a private
+ * session as an ordinary class aimed at an unusually small group.
+ */
+export async function pickCoach(
+  _prev: GroupState,
+  formData: FormData,
+): Promise<GroupState> {
+  const profile = await requireOnboardedProfile();
+  const subscription = await getActiveSubscription();
+
+  if (!subscription) redirect("/subscribe");
+  if (subscription.plan_tier !== "one_to_one") {
+    return { error: "Your plan is a group plan — pick a group instead." };
+  }
+
+  const parsed = pickCoachSchema.safeParse({ coachId: formData.get("coachId") });
+  if (!parsed.success) return { error: "Pick a coach." };
+
+  const supabase = createAdminClient();
+
+  const { data: coach } = await supabase
+    .from("profiles")
+    .select("id, name, one_to_one_capacity, role")
+    .eq("id", parsed.data.coachId)
+    .maybeSingle();
+
+  if (!coach || (coach.role !== "trainer" && coach.role !== "admin")) {
+    return { error: "That coach isn't available." };
+  }
+
+  // Re-checked here rather than trusted from the page that rendered the list:
+  // between it loading and this posting, someone else may have taken the last
+  // slot with this coach.
+  const { count } = await supabase
+    .from("training_groups")
+    .select("id", { count: "exact", head: true })
+    .eq("trainer_id", coach.id)
+    .eq("kind", "one_to_one")
+    .eq("active", true);
+
+  if ((count ?? 0) >= coach.one_to_one_capacity) {
+    return { error: "That coach is fully booked. Pick another." };
+  }
+
+  const groupName = `${profile.name ?? "Member"} — one-to-one`;
+
+  const { data: group, error: groupError } = await supabase
+    .from("training_groups")
+    .insert({
+      name: groupName,
+      focus: profile.fitness_goal || "One-to-one",
+      trainer_id: coach.id,
+      kind: "one_to_one",
+      capacity: 1,
+      schedule_hint: "Times agreed with your coach",
+    })
+    .select("id")
+    .single();
+
+  if (groupError || !group) {
+    console.error("[groups] could not create private group", groupError);
+    return { error: "Couldn't set that up. Try again." };
+  }
+
+  const { error: joinError } = await supabase
+    .from("group_members")
+    .insert({ group_id: group.id, user_id: profile.id });
+
+  if (joinError) {
+    // Roll the group back rather than leaving an empty private cohort behind
+    // that counts against the coach's capacity forever.
+    await supabase.from("training_groups").delete().eq("id", group.id);
+    console.error("[groups] could not join private group", joinError);
+    return { error: "Couldn't set that up. Try again." };
+  }
+
+  await notifyCoach(coach.id, groupName, profile.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/coach");
+  redirect("/dashboard?notice=coach-assigned");
+}
+
+/**
+ * Tells a coach someone new has joined.
+ *
+ * Best effort on purpose: a failed email must not undo a join the member has
+ * already been told succeeded. The coach still sees them in /coach either way,
+ * which is the durable half of the notification — the email is the nudge.
+ */
+async function notifyCoach(
+  coachId: string | null,
+  groupName: string,
+  memberId: string,
+) {
+  if (!coachId) return;
+
+  try {
+    const supabase = createAdminClient();
+
+    const [{ data: coach }, { data: member }] = await Promise.all([
+      supabase.from("profiles").select("name, email").eq("id", coachId).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("name, email, fitness_goal")
+        .eq("id", memberId)
+        .maybeSingle(),
+    ]);
+
+    if (!coach?.email || !member) return;
+
+    // The assessment they took before signing up, matched on email. Coaches
+    // see it in full — stated at the quiz and in the privacy policy, which is
+    // why it can be sent here.
+    const assessment = member.email
+      ? (
+          await supabase
+            .from("leads")
+            .select("score, band, tier_nudge, summary")
+            .eq("email", member.email.toLowerCase())
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        ).data
+      : null;
+
+    const { subject, html } = buildNewMemberEmail({
+      coachName: coach.name?.split(/\s+/)[0] ?? "there",
+      memberName: member.name ?? "A new member",
+      groupName,
+      fitnessGoal: member.fitness_goal,
+      assessment: assessment
+        ? {
+            score: assessment.score,
+            band: assessment.band,
+            summary: assessment.summary,
+          }
+        : null,
+      coachUrl: `${publicEnv.siteUrl}/coach`,
+    });
+
+    await sendEmail({ to: coach.email, subject, html });
+  } catch (error) {
+    console.error("[groups] coach notification failed", error);
+  }
+}

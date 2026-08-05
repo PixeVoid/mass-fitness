@@ -30,15 +30,26 @@ export default function AssessmentPage() {
           </p>
         </div>
 
+        {/* Above the questions, not below them. The answers are health
+            information and a coach sees them in full — telling someone that
+            after they have typed it is a notice, not a consent. */}
+        <div className="mt-8 max-w-xl space-y-3 text-[0.8125rem] leading-relaxed text-faint">
+          <p>
+            General fitness guidance only — not medical advice, and not a
+            substitute for a coach. Talk to a doctor about pain, injury, or any
+            medical condition.
+          </p>
+          <p>
+            If you go on to join Mass Fitness, your answers and score are
+            shared in full with the coach who trains you, so they can plan
+            around them. Nobody else sees them. You can ask us to delete them
+            at any time.
+          </p>
+        </div>
+
         <div className="mt-10 sm:mt-12">
           <AssessmentQuiz />
         </div>
-
-        <p className="mx-auto mt-8 max-w-xl text-center text-[0.8125rem] leading-relaxed text-faint">
-          General fitness guidance only — not medical advice, and not a
-          substitute for a coach. Talk to a doctor about pain, injury, or any
-          medical condition.
-        </p>
       </main>
     </>
   );

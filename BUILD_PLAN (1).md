@@ -8,7 +8,7 @@
 
 ## Status at a glance
 
-Last updated: 2026-08-05. Update this table in the same commit as the work it describes.
+Last updated: 2026-08-06. Update this table in the same commit as the work it describes.
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -22,6 +22,7 @@ Last updated: 2026-08-05. Update this table in the same commit as the work it de
 | 6 — Admin dashboard | ✅ Code complete | `/admin` — members (roles + manual membership grants), class scheduling, overview. Removes all the hand-written SQL except the first admin promotion. |
 | 6.2 — Trainer role | ✅ Code complete | `/coach` — trainers schedule, edit and cancel their **own** classes. Ownership is enforced in Postgres (`classes: coach ...` policies), not just in hidden buttons. No delete: cancelling leaves the row visible and marked off. Members, leads, pricing and payments stay admin-only. |
 | 6.3 — Class reminders | ✅ Code complete | Countdown banner on the dashboard, plus an email ~30 min ahead via `/api/cron/class-reminders`. Scheduler-agnostic (Vercel Cron, pg_cron + pg_net, anything that can send a bearer token) — Vercel's Hobby tier only allows daily crons, so tying it to one scheduler would have made the feature depend on a billing tier. |
+| 6.4 — Training groups | ✅ Code complete | Cohorts with one coach and a hard cap, enforced by a database trigger rather than a count-then-insert. Members pick a group straight after paying; one-to-one is a cohort of one created when they pick a coach, so private sessions reuse every path a group class already has. Classes carry `audience`, the join check and the reminder email both respect it, and coaches get emailed a new member's full assessment — consented at the quiz, not just in the policy. |
 | 6.5 — Blog + FAQ | ✅ Code complete | `/blog`, `/blog/[slug]`, `/faq` with FAQPage JSON-LD; both admin-authored from `/admin/blog` and `/admin/faq`. Resolves open flag 3. |
 | 7 — Flutter app prep | ⬜ Not started | — |
 
@@ -36,7 +37,7 @@ The project is on **Next.js 16**, which is not the Next.js most training data de
 
 None of it is code — all of it is account setup, and nothing below can be done from a dev session.
 
-1. **Create the Supabase project**, then run every file in `supabase/migrations/` against it in filename order — `0001_init` … `0008_coaches_and_reminders` (SQL editor or `supabase db push`).
+1. **Create the Supabase project**, then run every file in `supabase/migrations/` against it in filename order — `0001_init` … `0009_training_groups` (SQL editor or `supabase db push`).
 2. **Enable Email auth** in Supabase → Authentication → Providers (on by default on new projects, but confirm). No SMS/WhatsApp provider needed — see Section 0.3.
 3. **Create a Google OAuth client** and wire it into Supabase → Authentication → Providers → Google. Also see Section 0.3.
 4. **Create a LiveKit Cloud project** for the URL, key and secret.
@@ -46,7 +47,8 @@ None of it is code — all of it is account setup, and nothing below can be done
 8. **Confirm "linked accounts" is on** so an email signup and a later Google sign-in with the same address are one account, not two.
 9. Copy `.env.example` → `.env.local` and fill it in, including `NEXT_PUBLIC_SITE_URL`. Same values go into Vercel's env settings for deploys. `PAYMENT_PROVIDER=mock` until PhonePe credentials exist.
 10. **Set `CRON_SECRET`** and point a scheduler at `/api/cron/class-reminders` every 5 minutes, with `Authorization: Bearer $CRON_SECRET`. Vercel Cron sends it automatically but only allows daily runs on Hobby; pg_cron + pg_net from Supabase works on any tier. Without this, class reminder emails never send — the route refuses to run unauthenticated.
-11. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
+11. **Create at least one training group** at `/admin/groups` before anyone subscribes, and set a one-to-one capacity for any coach who should take private clients. A member who pays with no group available lands on a page telling them to message you — recoverable, but not the first impression you want.
+12. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
    ```sql
    update public.profiles set role = 'admin' where email = 'you@example.com';
    ```

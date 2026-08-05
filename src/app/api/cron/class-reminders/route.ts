@@ -95,6 +95,42 @@ async function handle(request: Request) {
       typeof profile.email === "string" && profile.email.includes("@"),
   );
 
+  // Who is in which group, read once. A reminder about a session someone
+  // cannot attend is worse than no reminder — it is a notification that
+  // teaches them to ignore the next one.
+  const { data: memberships } = await supabase
+    .from("group_members")
+    .select("user_id, group_id")
+    .in(
+      "user_id",
+      recipients.map((profile) => profile.id),
+    );
+
+  const groupsByUser = new Map<string, Set<string>>();
+  for (const row of memberships ?? []) {
+    const set = groupsByUser.get(row.user_id) ?? new Set<string>();
+    set.add(row.group_id);
+    groupsByUser.set(row.user_id, set);
+  }
+
+  const targeted = classes.filter((item) => item.audience === "groups");
+  const { data: classTargets } = targeted.length
+    ? await supabase
+        .from("class_groups")
+        .select("class_id, group_id")
+        .in(
+          "class_id",
+          targeted.map((item) => item.id),
+        )
+    : { data: [] };
+
+  const targetsByClass = new Map<string, Set<string>>();
+  for (const row of classTargets ?? []) {
+    const set = targetsByClass.get(row.class_id) ?? new Set<string>();
+    set.add(row.group_id);
+    targetsByClass.set(row.class_id, set);
+  }
+
   let sent = 0;
   let failed = 0;
 
@@ -107,7 +143,22 @@ async function handle(request: Request) {
     const formattedTime = formatClassTime(fitnessClass.scheduled_at);
     const joinUrl = `${publicEnv.siteUrl}/live/${fitnessClass.id}`;
 
-    for (const profile of recipients) {
+    // A class marked 'groups' with no targets reaches nobody, which mirrors
+    // what the join check does with the same row.
+    const classTargetIds = targetsByClass.get(fitnessClass.id);
+    const audienceForClass =
+      fitnessClass.audience === "all"
+        ? recipients
+        : recipients.filter((profile) => {
+            const mine = groupsByUser.get(profile.id);
+            if (!mine || !classTargetIds) return false;
+            for (const groupId of classTargetIds) {
+              if (mine.has(groupId)) return true;
+            }
+            return false;
+          });
+
+    for (const profile of audienceForClass) {
       // The claim, not a log. Whoever inserts the row owns the send; a
       // concurrent run's insert violates the primary key and it skips. This is
       // why the insert happens *before* the email rather than after — the

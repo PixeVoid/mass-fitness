@@ -52,7 +52,9 @@ export default async function PaymentReturnPage({
   const result = await settleCheckout(order);
 
   if (result.outcome === "activated" || result.outcome === "already_active") {
-    redirect("/dashboard?notice=subscribed");
+    // Straight into picking a group. A member who has just paid and lands on
+    // an empty dashboard has no way of knowing the product is not broken.
+    redirect("/subscribe/group");
   }
 
   if (result.outcome === "failed") {

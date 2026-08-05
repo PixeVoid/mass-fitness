@@ -3,6 +3,7 @@ import { classWindow, formatClassTime } from "@/lib/classes";
 import { createClient } from "@/lib/supabase/server";
 import ClassRow from "./ClassRow";
 import ScheduleForm from "./ScheduleForm";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,27 @@ export default async function CoachPage() {
     .select("*")
     .eq("trainer_id", coach.id)
     .order("scheduled_at", { ascending: true });
+
+  // The coach's own groups, with roster sizes, so the schedule form can offer
+  // them as targets.
+  const { data: myGroups } = await supabase
+    .from("training_groups")
+    .select("id, name, kind")
+    .eq("trainer_id", coach.id)
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  const { data: rosterRows } = (myGroups ?? []).length
+    ? await supabase
+        .from("group_members")
+        .select("group_id")
+        .in("group_id", (myGroups ?? []).map((group) => group.id))
+    : { data: [] };
+
+  const counts = new Map<string, number>();
+  for (const row of rosterRows ?? []) {
+    counts.set(row.group_id, (counts.get(row.group_id) ?? 0) + 1);
+  }
 
   const now = new Date();
   const all = classes ?? [];
@@ -35,7 +57,12 @@ export default async function CoachPage() {
 
   return (
     <>
-      <h1 className="display-sm text-[1.75rem] text-ink">Your schedule</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 className="display-sm text-[1.75rem] text-ink">Your schedule</h1>
+        <Link href="/coach/groups" className="link label">
+          Your groups &rarr;
+        </Link>
+      </div>
       <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-muted">
         Anything you add here goes straight onto members&rsquo; dashboards and
         is yours to run. There is no room to set up — it opens itself when the
@@ -43,7 +70,14 @@ export default async function CoachPage() {
       </p>
 
       <section className="mt-10">
-        <ScheduleForm />
+        <ScheduleForm
+          groups={(myGroups ?? []).map((group) => ({
+            id: group.id,
+            name: group.name,
+            kind: group.kind,
+            memberCount: counts.get(group.id) ?? 0,
+          }))}
+        />
       </section>
 
       <section className="mt-16">

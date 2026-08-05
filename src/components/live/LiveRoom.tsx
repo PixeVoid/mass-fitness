@@ -39,6 +39,12 @@ const ERRORS: Record<string, { message: string; href?: string; label?: string }>
       href: "/subscribe",
       label: "See the plans",
     },
+    not_in_group: {
+      message:
+        "This session is for a different group. Your own classes are on your dashboard.",
+      href: "/dashboard",
+      label: "My classes",
+    },
     class_not_found: { message: "That class no longer exists." },
     class_closed: { message: "This class has finished." },
   };

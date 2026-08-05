@@ -2,7 +2,15 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useState } from "react";
 import { scheduleOwnClass, type CoachState } from "@/app/actions/coach";
+
+export interface CoachGroup {
+  id: string;
+  name: string;
+  kind: "group" | "one_to_one";
+  memberCount: number;
+}
 
 /**
  * Schedule a session.
@@ -11,10 +19,16 @@ import { scheduleOwnClass, type CoachState } from "@/app/actions/coach";
  * No members-only toggle either: giving a session away free is a pricing
  * decision, and pricing lives with admins.
  */
-export default function ScheduleForm() {
+export default function ScheduleForm({ groups }: { groups: CoachGroup[] }) {
   const [state, action] = useActionState<CoachState, FormData>(
     scheduleOwnClass,
     {},
+  );
+  // Defaults to the whole membership only when there is nothing to target.
+  // With groups available, making the choice deliberate is the point — an
+  // accidental "everyone" on a one-to-one is a private session made public.
+  const [audience, setAudience] = useState<"all" | "groups">(
+    groups.length > 0 ? "groups" : "all",
   );
 
   return (
@@ -69,6 +83,65 @@ export default function ScheduleForm() {
           className="field numeric"
         />
       </div>
+
+      <fieldset className="sm:col-span-2">
+        <legend className="field-label">Who is it for?</legend>
+        <div className="mt-2 flex flex-col gap-3">
+          <label className="flex items-center gap-3 text-[0.9375rem] text-ink">
+            <input
+              type="radio"
+              name="audience"
+              value="all"
+              checked={audience === "all"}
+              onChange={() => setAudience("all")}
+              className="h-4 w-4 accent-[color:var(--ink)]"
+            />
+            Every member
+          </label>
+          <label className="flex items-center gap-3 text-[0.9375rem] text-ink">
+            <input
+              type="radio"
+              name="audience"
+              value="groups"
+              checked={audience === "groups"}
+              onChange={() => setAudience("groups")}
+              disabled={groups.length === 0}
+              className="h-4 w-4 accent-[color:var(--ink)]"
+            />
+            Specific groups
+          </label>
+        </div>
+
+        {audience === "groups" && (
+          <div className="mt-5 flex flex-col gap-3 border-l border-line pl-5">
+            {groups.length === 0 ? (
+              <p className="text-[0.8125rem] leading-relaxed text-faint">
+                You have no groups yet — an admin creates them and assigns you.
+              </p>
+            ) : (
+              groups.map((group) => (
+                <label
+                  key={group.id}
+                  className="flex items-center gap-3 text-[0.9375rem] text-muted"
+                >
+                  <input
+                    type="checkbox"
+                    name="groupIds"
+                    value={group.id}
+                    className="h-4 w-4 accent-[color:var(--ink)]"
+                  />
+                  {group.name}
+                  <span className="label text-faint">
+                    {group.kind === "one_to_one"
+                      ? "one-to-one"
+                      : `${group.memberCount} member${group.memberCount === 1 ? "" : "s"}`}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+      </fieldset>
 
       <div className="sm:col-span-2">
         <Submit />
