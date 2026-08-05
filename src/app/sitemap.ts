@@ -25,6 +25,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    // The search landing pages. High priority because these are the pages
+    // built to be found — the homepage ranks on the brand, these on the
+    // category.
+    {
+      url: `${siteUrl}/online-fitness-classes`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/home-workout-plans`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/online-personal-training`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
     {
       url: `${siteUrl}/faq`,
       lastModified: now,

@@ -15,9 +15,9 @@ const COMPANY_LINKS = [
 ];
 
 const PROGRAM_LINKS = [
-  { href: "/#your-plan", label: "Fitness plan setup" },
-  { href: "/#classes", label: "Live online classes" },
-  { href: "/#library", label: "Home workouts" },
+  { href: "/online-fitness-classes", label: "Live online classes" },
+  { href: "/home-workout-plans", label: "Home workout plans" },
+  { href: "/online-personal-training", label: "Online personal training" },
   { href: "/#coaches", label: "Expert trainers" },
   { href: "/#library", label: "Workout library" },
 ];
