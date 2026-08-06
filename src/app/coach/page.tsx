@@ -1,6 +1,12 @@
 import { requireCoach } from "@/lib/auth/dal";
 import { classWindow, formatClassTime } from "@/lib/classes";
 import { createClient } from "@/lib/supabase/server";
+import { IconBadge, IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
+// One IST formatter, not two. This page had its own copy built on
+// Intl.formatToParts; lib/schedule does the same job with arithmetic and is
+// what the admin edit form already uses.
+import { toIstLocalInput } from "@/lib/schedule";
 import ClassRow from "./ClassRow";
 import ScheduleForm from "./ScheduleForm";
 import Link from "next/link";
@@ -81,14 +87,17 @@ export default async function CoachPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="label text-faint">
+        <IconLabel glyph={glyphs.upcoming}>
           Coming up{upcoming.length > 0 ? ` · ${upcoming.length}` : ""}
-        </h2>
+        </IconLabel>
 
         {upcoming.length === 0 ? (
-          <p className="mt-6 text-[0.9375rem] leading-relaxed text-muted">
-            Nothing scheduled. Add your first session above.
-          </p>
+          <div className="mt-6 flex items-start gap-4">
+            <IconBadge glyph={glyphs.nothingScheduled} />
+            <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted">
+              Nothing scheduled. Add your first session above.
+            </p>
+          </div>
         ) : (
           <ul className="mt-6">
             {upcoming.map((item) => (
@@ -97,7 +106,7 @@ export default async function CoachPage() {
                 fitnessClass={item}
                 window={classWindow(item, now)}
                 formattedTime={formatClassTime(item.scheduled_at)}
-                localDateTime={toLocalInputValue(item.scheduled_at)}
+                localDateTime={toIstLocalInput(new Date(item.scheduled_at))}
               />
             ))}
           </ul>
@@ -106,7 +115,7 @@ export default async function CoachPage() {
 
       {past.length > 0 && (
         <section className="mt-16">
-          <h2 className="label text-faint">Done</h2>
+          <IconLabel glyph={glyphs.membership}>Done</IconLabel>
           <ul className="mt-6">
             {past.slice(0, 20).map((item) => (
               <li
@@ -129,29 +138,4 @@ export default async function CoachPage() {
       )}
     </>
   );
-}
-
-/**
- * An ISO timestamp as `YYYY-MM-DDTHH:mm` for a datetime-local input.
- *
- * Rendered in IST rather than the server's UTC: the input has no timezone of
- * its own, so whatever string goes in is read back as the browser's local
- * time. Coaches and members are both in India, so IST is the one reading that
- * makes the edit form show the same time the schedule above it just did.
- */
-function toLocalInputValue(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Kolkata",
-  }).formatToParts(new Date(iso));
-
-  const get = (type: string) =>
-    parts.find((part) => part.type === type)?.value ?? "00";
-
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }

@@ -3,6 +3,8 @@ import { requireCoach } from "@/lib/auth/dal";
 import { getAssessmentsForMembers, getRecentJoins } from "@/lib/groups";
 import { formatClassTime } from "@/lib/classes";
 import { createAdminClient } from "@/lib/supabase/admin";
+import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
@@ -69,14 +71,17 @@ export default async function CoachGroupsPage() {
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="display-sm text-[1.75rem] text-ink">Your groups</h1>
-        <Link href="/coach" className="link label">
+        <Link href="/coach" className="link label flex items-center gap-2">
+          <Icon glyph={glyphs.schedule} size="sm" />
           Schedule &rarr;
         </Link>
       </div>
 
       {recentJoins.length > 0 && (
         <section className="mt-10 rounded-2xl border border-line bg-surface p-6 sm:p-8">
-          <h2 className="label text-faint">New in the last two weeks</h2>
+          <IconLabel glyph={glyphs.newMember}>
+            New in the last two weeks
+          </IconLabel>
           <ul className="mt-6 flex flex-col gap-5">
             {recentJoins.map((member) => (
               <li key={`${member.userId}-${member.joinedAt}`}>
@@ -85,7 +90,8 @@ export default async function CoachGroupsPage() {
                   <span className="text-faint"> · {member.groupName}</span>
                 </p>
                 {member.fitnessGoal && (
-                  <p className="mt-1 text-[0.9375rem] text-muted">
+                  <p className="mt-1 flex items-center gap-2 text-[0.9375rem] text-muted">
+                    <Icon glyph={glyphs.goal} size="sm" className="text-faint" />
                     Training for: {member.fitnessGoal}
                   </p>
                 )}
@@ -106,7 +112,8 @@ export default async function CoachGroupsPage() {
                   );
                 })()}
 
-                <p className="label mt-2 text-faint">
+                <p className="label mt-2 flex items-center gap-1.5 text-faint">
+                  <Icon glyph={glyphs.time} size="sm" />
                   <span className="numeric">
                     {formatClassTime(member.joinedAt)}
                   </span>
@@ -124,11 +131,14 @@ export default async function CoachGroupsPage() {
 
       <section className="mt-14">
         {!groups || groups.length === 0 ? (
-          <p className="text-[0.9375rem] leading-relaxed text-muted">
+          <div className="flex items-start gap-4">
+            <IconBadge glyph={glyphs.groups} />
+            <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted">
             You don&rsquo;t have any groups yet. An admin creates them and
             assigns you — one-to-one groups appear here on their own when a
             member picks you.
-          </p>
+            </p>
+          </div>
         ) : (
           <ul className="flex flex-col">
             {groups.map((group) => {
@@ -145,7 +155,8 @@ export default async function CoachGroupsPage() {
                         {group.schedule_hint ? ` · ${group.schedule_hint}` : ""}
                       </p>
                     </div>
-                    <span className="label text-faint">
+                    <span className="label flex items-center gap-1.5 text-faint">
+                      <Icon glyph={glyphs.members} size="sm" />
                       {roster.length} of {group.capacity}
                       {group.kind === "one_to_one" ? " · one-to-one" : ""}
                     </span>

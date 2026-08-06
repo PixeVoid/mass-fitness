@@ -5,6 +5,8 @@ import { useFormStatus } from "react-dom";
 import { createClass, type ActionState } from "@/app/actions/admin";
 import type { Profile } from "@/lib/db-types";
 import { personOptionLabel } from "@/lib/people";
+import Icon from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 import {
   MAX_WEEKS,
   WEEKDAY_LABELS,
@@ -212,6 +214,7 @@ export default function ClassForm({
             onChange={(event) => setRepeats(event.target.checked)}
             className="h-5 w-5 accent-[color:var(--ink)]"
           />
+          <Icon glyph={glyphs.repeating} size="md" className="text-muted" />
           Repeat this every week
         </label>
 

@@ -3,6 +3,8 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { joinGroup, pickCoach, type GroupState } from "@/app/actions/groups";
+import Icon from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 /**
  * The step straight after paying: which cohort are you in.
@@ -69,7 +71,8 @@ export function GroupChoices({ groups }: { groups: PickableGroup[] }) {
                 </span>
               </span>
 
-              <span className="label whitespace-nowrap pt-1.5 text-right text-faint">
+              <span className="label flex items-center gap-1.5 whitespace-nowrap pt-1.5 text-right text-faint">
+                <Icon glyph={glyphs.members} size="sm" />
                 {group.spacesLeft} left
               </span>
             </label>
@@ -109,7 +112,8 @@ export function CoachChoices({ coaches }: { coaches: PickableCoach[] }) {
                   {coach.name ?? "Coach"}
                 </span>
               </span>
-              <span className="label text-faint">
+              <span className="label flex items-center gap-1.5 text-faint">
+                <Icon glyph={glyphs.capacity} size="sm" />
                 {coach.slotsLeft} slot{coach.slotsLeft === 1 ? "" : "s"} open
               </span>
             </label>

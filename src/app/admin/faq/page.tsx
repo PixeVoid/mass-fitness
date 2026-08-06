@@ -3,6 +3,8 @@ import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { requireAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import FaqForm from "./FaqForm";
+import { IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +38,7 @@ export default async function AdminFaqPage() {
       </p>
 
       <section className="mt-12 border-t border-line pt-8">
-        <h2 className="label text-faint">Add a question</h2>
+        <IconLabel glyph={glyphs.faq}>Add a question</IconLabel>
         <div className="mt-6 max-w-2xl">
           <FaqForm categories={categories} />
         </div>

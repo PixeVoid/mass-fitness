@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Icon from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 /**
  * The admin section nav, with a marker for where you are.
@@ -13,14 +15,14 @@ import { usePathname } from "next/navigation";
  */
 
 const TABS = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/members", label: "Members" },
-  { href: "/admin/classes", label: "Classes" },
-  { href: "/admin/groups", label: "Groups" },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/pricing", label: "Pricing" },
-  { href: "/admin/blog", label: "Blog" },
-  { href: "/admin/faq", label: "FAQ" },
+  { href: "/admin", label: "Overview", glyph: glyphs.overview },
+  { href: "/admin/members", label: "Members", glyph: glyphs.members },
+  { href: "/admin/classes", label: "Classes", glyph: glyphs.classes },
+  { href: "/admin/groups", label: "Groups", glyph: glyphs.groups },
+  { href: "/admin/leads", label: "Leads", glyph: glyphs.leads },
+  { href: "/admin/pricing", label: "Pricing", glyph: glyphs.pricing },
+  { href: "/admin/blog", label: "Blog", glyph: glyphs.blog },
+  { href: "/admin/faq", label: "FAQ", glyph: glyphs.faq },
 ];
 
 export default function AdminTabs() {
@@ -42,12 +44,13 @@ export default function AdminTabs() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-4 py-2 text-[0.8125rem] transition-colors duration-300 ${
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-[0.8125rem] transition-colors duration-300 ${
               active
                 ? "nav-pill-active"
                 : "text-muted hover:bg-overlay hover:text-ink"
             }`}
           >
+            <Icon glyph={tab.glyph} size="sm" />
             {tab.label}
           </Link>
         );

@@ -4,6 +4,8 @@ import { listTrainers } from "@/lib/admin/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import CoachCapacityForm from "./CoachCapacityForm";
 import GroupForm from "./GroupForm";
+import { IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,7 @@ export default async function AdminGroupsPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="label text-faint">Shared groups</h2>
+        <IconLabel glyph={glyphs.groups}>Shared groups</IconLabel>
         {shared.length === 0 ? (
           <p className="mt-6 text-[0.9375rem] text-muted">
             None yet. Members who pay before a group exists land on a page
@@ -106,7 +108,7 @@ export default async function AdminGroupsPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="label text-faint">One-to-one capacity</h2>
+        <IconLabel glyph={glyphs.capacity}>One-to-one capacity</IconLabel>
         <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-muted">
           How many private clients each coach will take. Zero means they are
           not offered to anyone choosing a one-to-one plan — which is the

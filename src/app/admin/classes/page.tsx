@@ -7,6 +7,8 @@ import { groupClassSeries } from "@/lib/classSeries";
 import ClassForm from "./ClassForm";
 import ClassRow from "./ClassRow";
 import { started } from "@/lib/promises";
+import Icon, { IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +60,7 @@ export default async function AdminClassesPage({
       </div>
 
       <section className="mt-14">
-        <h2 className="label text-faint">Schedule</h2>
+        <IconLabel glyph={glyphs.classes}>Schedule</IconLabel>
 
         {classes.length === 0 ? (
           <p className="mt-6 text-[0.9375rem] text-muted">No classes yet.</p>
@@ -91,6 +93,7 @@ export default async function AdminClassesPage({
                           {group.title}
                         </span>
                         <span className="pick-badge ml-3">
+                          <Icon glyph={glyphs.repeating} size="sm" />
                           {group.sessions.length} sessions
                         </span>
                       </span>

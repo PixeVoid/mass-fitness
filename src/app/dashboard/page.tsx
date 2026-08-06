@@ -17,6 +17,8 @@ import {
   needsGroup,
 } from "@/lib/groups";
 import { getPlan, getPricingCatalogue } from "@/lib/pricing";
+import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 import { started } from "@/lib/promises";
 
 export const metadata: Metadata = {
@@ -113,7 +115,7 @@ export default async function DashboardPage({
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <p className="label text-faint">Dashboard</p>
+            <IconLabel glyph={glyphs.dashboard}>Dashboard</IconLabel>
             {/* A trainer had no way to tell, from their own dashboard, that
                 they were signed in as one — admins got a labelled button and
                 trainers got nothing. The role is the thing that changes what
@@ -131,17 +133,20 @@ export default async function DashboardPage({
 
         <div className="flex items-center gap-3">
           {profile.role === "admin" && (
-            <Link href="/admin" className="btn btn-outline btn-staff">
+            <Link href="/admin" className="btn btn-outline btn-staff gap-2">
+              <Icon glyph={glyphs.admin} size="sm" />
               Admin
             </Link>
           )}
           {isStaff && (
-            <Link href="/coach" className="btn btn-outline btn-staff">
+            <Link href="/coach" className="btn btn-outline btn-staff gap-2">
+              <Icon glyph={glyphs.schedule} size="sm" />
               Schedule
             </Link>
           )}
           <form action={signOut}>
-            <button type="submit" className="btn btn-outline">
+            <button type="submit" className="btn btn-outline gap-2">
+              <Icon glyph={glyphs.signOut} size="sm" />
               Sign out
             </button>
           </form>
@@ -150,7 +155,7 @@ export default async function DashboardPage({
 
       {awaitingGroup && (
         <div className="mt-10 rounded-2xl border border-line bg-surface p-6 sm:p-8">
-          <p className="label text-faint">One step left</p>
+          <IconLabel glyph={glyphs.groups}>One step left</IconLabel>
           <p className="mt-4 max-w-lg text-[0.9375rem] leading-relaxed text-ink">
             Your membership is active, but you haven&rsquo;t picked a group yet
             — so there&rsquo;s nothing on your schedule. It takes a moment.
@@ -176,9 +181,9 @@ export default async function DashboardPage({
 
       {/* MEMBERSHIP */}
       <section className="mt-14 border-t border-line pt-8 sm:mt-20">
-        <h2 className="label text-faint">
+        <IconLabel glyph={glyphs.membership}>
           {isStaff ? "Access" : "Membership"}
-        </h2>
+        </IconLabel>
 
         {isStaff && !subscription ? (
           // Staff are not customers. Telling a coach their classes are locked
@@ -217,9 +222,9 @@ export default async function DashboardPage({
 
       {/* CLASSES */}
       <section className="mt-14 border-t border-line pt-8 sm:mt-20">
-        <h2 className="label text-faint">
+        <IconLabel glyph={glyphs.classes}>
           {isStaff ? "Upcoming classes" : "Your classes"}
-        </h2>
+        </IconLabel>
 
         {myGroups.length > 0 && (
           <p className="mt-4 text-[0.9375rem] text-muted">
@@ -229,10 +234,13 @@ export default async function DashboardPage({
         )}
 
         {visibleClasses.length === 0 ? (
-          <p className="mt-6 max-w-md text-[0.9375rem] leading-relaxed text-muted">
-            Nothing on the schedule yet. New sessions are published a week
-            ahead.
-          </p>
+          <div className="mt-6 flex items-start gap-4">
+            <IconBadge glyph={glyphs.nothingScheduled} />
+            <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted">
+              Nothing on the schedule yet. New sessions are published a week
+              ahead.
+            </p>
+          </div>
         ) : (
           <ul className="mt-6">
             {visibleClasses.map((item) => {
@@ -268,10 +276,16 @@ export default async function DashboardPage({
                   </div>
 
                   <div className="label flex flex-wrap items-center gap-x-4 gap-y-2 text-faint lg:col-span-4">
-                    <span className="numeric">
-                      {formatClassTime(item.scheduled_at)}
+                    <span className="flex items-center gap-1.5">
+                      <Icon glyph={glyphs.time} size="sm" />
+                      <span className="numeric">
+                        {formatClassTime(item.scheduled_at)}
+                      </span>
                     </span>
-                    <span className="numeric">{item.duration_minutes} min</span>
+                    <span className="flex items-center gap-1.5">
+                      <Icon glyph={glyphs.duration} size="sm" />
+                      <span className="numeric">{item.duration_minutes} min</span>
+                    </span>
                   </div>
 
                   <div className="lg:col-span-3 lg:justify-self-end">

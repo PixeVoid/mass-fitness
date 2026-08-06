@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { getPlans } from "@/lib/pricing";
 import MemberRow from "./MemberRow";
 import { started } from "@/lib/promises";
+import { IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +68,7 @@ export default async function AdminMembersPage({
             )}
           </form>
 
-          <p className="label text-faint">{members.length} shown</p>
+          <IconLabel glyph={glyphs.members}>{members.length} shown</IconLabel>
         </div>
       </div>
 

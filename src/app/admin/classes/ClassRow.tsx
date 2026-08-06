@@ -5,6 +5,8 @@ import { useFormStatus } from "react-dom";
 import { updateClass, type ActionState } from "@/app/actions/admin";
 import { personOptionLabel } from "@/lib/people";
 import { formatClassTime, toIstLocalInput } from "@/lib/schedule";
+import Icon from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 import type { FitnessClass, Profile } from "@/lib/db-types";
 import StatusForm from "./StatusForm";
 
@@ -51,10 +53,27 @@ export default function ClassRow({
         </div>
 
         <div className="label flex flex-wrap items-center gap-x-4 gap-y-2 text-faint lg:col-span-4">
-          <span className="numeric">
-            {formatClassTime(fitnessClass.scheduled_at)}
+          <span className="flex items-center gap-1.5">
+            <Icon glyph={glyphs.time} size="sm" />
+            <span className="numeric">
+              {formatClassTime(fitnessClass.scheduled_at)}
+            </span>
           </span>
-          <span className="numeric">{fitnessClass.duration_minutes} min</span>
+          <span className="flex items-center gap-1.5">
+            <Icon glyph={glyphs.duration} size="sm" />
+            <span className="numeric">{fitnessClass.duration_minutes} min</span>
+          </span>
+          {/* Says at a glance that editing this one will not move its
+              siblings — the thing about a series people assume wrongly. */}
+          {fitnessClass.series_id && (
+            <span
+              title="Part of a repeating routine. Editing changes this session only."
+              className="flex items-center gap-1.5"
+            >
+              <Icon glyph={glyphs.repeating} size="sm" />
+              Repeats
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-3 lg:col-span-3 lg:justify-self-end">
