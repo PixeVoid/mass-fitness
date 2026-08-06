@@ -47,7 +47,32 @@ const ERRORS: Record<string, { message: string; href?: string; label?: string }>
     },
     class_not_found: { message: "That class no longer exists." },
     class_closed: { message: "This class has finished." },
+    class_not_open: {
+      message: "This class hasn't opened yet. The room unlocks 20 minutes before it starts.",
+      href: "/dashboard",
+      label: "My classes",
+    },
   };
+
+/**
+ * "…opens at 6:40 am" beats "not yet". The server sends the moment rather than
+ * a formatted string so this reads in the viewer's own timezone — a member
+ * travelling is still told a time they can act on.
+ */
+function notOpenMessage(opensAtMs: unknown): string | null {
+  if (typeof opensAtMs !== "number" || !Number.isFinite(opensAtMs)) return null;
+
+  const opensAt = new Date(opensAtMs);
+  if (Number.isNaN(opensAt.getTime())) return null;
+
+  const time = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(opensAt);
+
+  return `This class hasn't opened yet. The room unlocks ${time}, 20 minutes before it starts.`;
+}
 
 export default function LiveRoom({ classId }: { classId: string }) {
   const [phase, setPhase] = useState<Phase>({ status: "loading" });
@@ -70,9 +95,14 @@ export default function LiveRoom({ classId }: { classId: string }) {
 
         if (!response.ok) {
           const known = ERRORS[body?.error as string];
+          const message =
+            body?.error === "class_not_open"
+              ? notOpenMessage(body?.opensAtMs)
+              : null;
+
           setPhase({
             status: "error",
-            message: known?.message ?? "Couldn't join this class.",
+            message: message ?? known?.message ?? "Couldn't join this class.",
             action:
               known?.href && known.label
                 ? { href: known.href, label: known.label }

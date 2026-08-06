@@ -181,6 +181,21 @@ export async function pickCoach(
     return { error: "Couldn't set that up. Try again." };
   }
 
+  // The capacity check above is a read followed by a write, which two people
+  // taking a coach's last slot at the same moment both pass. Group capacity is
+  // enforced by a trigger for exactly this reason, but a *coach's* limit spans
+  // rows the trigger never sees — so it is settled after the fact instead.
+  //
+  // Both writers now rank the same committed list, so whoever created the
+  // later group is the one that stands down. A group cohort would need a lock;
+  // here the loser can simply be undone, because nothing else has touched it
+  // yet and the member has not been told anything.
+  if (!(await withinCapacity(coach.id, group.id, coach.one_to_one_capacity))) {
+    await supabase.from("group_members").delete().eq("group_id", group.id);
+    await supabase.from("training_groups").delete().eq("id", group.id);
+    return { error: "That coach was booked out a moment ago. Pick another." };
+  }
+
   await notifyCoach(coach.id, groupName, profile.id);
 
   revalidatePath("/dashboard");
@@ -227,6 +242,74 @@ async function countPayingPrivateClients(coachId: string): Promise<number> {
     .gt("end_date", new Date().toISOString());
 
   return new Set((live ?? []).map((row) => row.user_id)).size;
+}
+
+/**
+ * Whether a freshly created private group is inside its coach's limit.
+ *
+ * Ranks the coach's occupied one-to-one groups oldest first and asks whether
+ * this one falls within the first `capacity`. Ordering by creation time is
+ * what makes the answer the same for every caller: two racing writers both see
+ * both rows, and both agree which of them is the extra one.
+ *
+ * A group with no paying member does not occupy a slot, on the same reasoning
+ * as `countPayingPrivateClients` — otherwise a coach fills permanently with
+ * clients who lapsed.
+ */
+async function withinCapacity(
+  coachId: string,
+  groupId: string,
+  capacity: number,
+): Promise<boolean> {
+  const supabase = createAdminClient();
+
+  const { data: groups } = await supabase
+    .from("training_groups")
+    .select("id, created_at")
+    .eq("trainer_id", coachId)
+    .eq("kind", "one_to_one")
+    .eq("active", true)
+    .order("created_at", { ascending: true })
+    // Ties are possible — `now()` is the transaction start time, so two joins
+    // in the same instant can share a timestamp. The id breaks it, arbitrarily
+    // but identically for both callers, which is all this needs.
+    .order("id", { ascending: true });
+
+  if (!groups || groups.length === 0) return true;
+
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("group_id, user_id")
+    .in(
+      "group_id",
+      groups.map((group) => group.id),
+    );
+
+  const userIds = [...new Set((members ?? []).map((row) => row.user_id))];
+  const { data: live } = userIds.length
+    ? await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .in("user_id", userIds)
+        .eq("status", "active")
+        .gt("end_date", new Date().toISOString())
+    : { data: [] };
+
+  const paying = new Set((live ?? []).map((row) => row.user_id));
+  const occupiedGroups = new Set(
+    (members ?? [])
+      .filter((row) => paying.has(row.user_id))
+      .map((row) => row.group_id),
+  );
+
+  const rank = groups
+    .filter((group) => occupiedGroups.has(group.id))
+    .findIndex((group) => group.id === groupId);
+
+  // Not in the occupied list at all means this member is not counted as paying
+  // — which cannot happen on this path, and if it somehow does, refusing them
+  // a coach they have paid for is the worse failure.
+  return rank === -1 || rank < capacity;
 }
 
 /**

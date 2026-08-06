@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireCoach } from "@/lib/auth/dal";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -175,7 +176,25 @@ export async function updateOwnClass(
     return { error: "That date didn't parse." };
   }
 
+  // Same guard as scheduling. Rescheduling had none, so the one rule that
+  // stopped a class being created in the past could be walked straight around
+  // by creating it for tomorrow and editing it to yesterday — and now that the
+  // door is enforced server-side, that class is one nobody can ever join.
+  if (scheduledAt.getTime() < Date.now() - 60_000) {
+    return { error: "That time has already passed." };
+  }
+
   const supabase = await createClient();
+
+  // Read the old time before overwriting it: whether reminders have to be
+  // reissued depends on whether this edit actually moved the class.
+  const { data: before } = await supabase
+    .from("classes")
+    .select("scheduled_at")
+    .eq("id", parsed.data.classId)
+    .eq("trainer_id", coach.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("classes")
     .update({
@@ -194,9 +213,49 @@ export async function updateOwnClass(
     return { error: "Couldn't save those changes." };
   }
 
+  const moved =
+    !!before &&
+    new Date(before.scheduled_at).getTime() !== scheduledAt.getTime();
+
+  if (moved) {
+    await releaseReminders(parsed.data.classId);
+  }
+
   revalidatePath("/coach");
   revalidatePath("/dashboard");
-  return { success: "Saved." };
+  return {
+    success: moved
+      ? "Saved. Members will be reminded again at the new time."
+      : "Saved.",
+  };
+}
+
+/**
+ * Drops a class's reminder claims so the next cron run sends again.
+ *
+ * `class_reminders` is a claim, not a log — a row means "this person has been
+ * told about this class". Moving a class left those rows in place, so everyone
+ * already reminded about the old 6pm got nothing about the new 8pm: the one
+ * group of people guaranteed to turn up at the wrong time were the ones who
+ * had been paying attention.
+ *
+ * Service role because the table has no policy for anyone by design (0008).
+ * Best effort — a failure here costs a missing reminder, and must not fail an
+ * edit the trainer has already been told succeeded.
+ */
+async function releaseReminders(classId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("class_reminders")
+      .delete()
+      .eq("class_id", classId)
+      .eq("kind", "starting_soon");
+
+    if (error) console.error("[coach] could not clear reminders", error);
+  } catch (error) {
+    console.error("[coach] could not clear reminders", error);
+  }
 }
 
 const statusSchema = z.object({

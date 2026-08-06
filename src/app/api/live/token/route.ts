@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
-import { getClassById } from "@/lib/classes";
+import { classJoinWindow, decideClassDoor, getClassById } from "@/lib/classes";
 import { decideJoin } from "@/lib/groups";
 import { getVideoProvider } from "@/lib/video/livekit";
 
@@ -63,15 +63,30 @@ export async function POST(request: Request) {
     return json({ error: "class_not_found" }, 404);
   }
 
-  if (fitnessClass.status === "cancelled" || fitnessClass.status === "ended") {
-    return json({ error: "class_closed" }, 409);
-  }
-
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
   // A trainer publishes only into their own class. The admin role is the
   // override, so a stand-in coach is a data change, not a code change.
   const isHost = isAdmin || (!!profile && fitnessClass.trainer_id === user.id);
+
+  // The door, enforced here rather than only drawn on the dashboard. This used
+  // to read the status field alone, which meant the 20-minute window was copy
+  // and not a rule: a token could be minted for a class days out, and one
+  // whose trainer never marked it ended stayed open indefinitely.
+  const door = decideClassDoor(fitnessClass, { isHost });
+  if (door === "closed") {
+    return json({ error: "class_closed" }, 409);
+  }
+  if (door === "too_early") {
+    return json(
+      {
+        error: "class_not_open",
+        // So the client can say *when*, rather than just "not yet".
+        opensAtMs: classJoinWindow(fitnessClass).opensAtMs,
+      },
+      409,
+    );
+  }
 
   // The gate, in one decision. It used to sit inside `if (is_premium)`, which
   // meant a free class targeted at one cohort admitted anybody signed in — and

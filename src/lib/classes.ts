@@ -77,9 +77,47 @@ export function classJoinWindow(fitnessClass: ClassTiming): {
   };
 }
 
+export type DoorDecision = "open" | "too_early" | "closed";
+
+/**
+ * Whether the room will admit this person *right now* — the server-side door.
+ *
+ * This is the check `classWindow` claimed the token route was making and it
+ * was not: the route only refused a class whose status said "cancelled" or
+ * "ended", so the 20-minute door existed in the dashboard's copy and nowhere
+ * that could enforce it. A member could mint a token for a session days away,
+ * and a class whose trainer forgot to mark it ended stayed joinable forever.
+ *
+ * Status is deliberately *not* trusted to open the door, only to close it. It
+ * is a field a trainer sets by hand, so treating "live" as "admit anyone"
+ * would put the same hole back behind a checkbox. The clock decides.
+ *
+ * A host is exempt. They are running the session rather than attending it, so
+ * they can open the room to set up ahead of the door and cannot be locked out
+ * of their own class by an overrun — the case that makes a hard close unkind.
+ */
+export function decideClassDoor(
+  fitnessClass: ClassTiming,
+  options: { isHost: boolean; now?: number },
+): DoorDecision {
+  if (fitnessClass.status === "cancelled" || fitnessClass.status === "ended") {
+    return "closed";
+  }
+
+  if (options.isHost) return "open";
+
+  const now = options.now ?? Date.now();
+  const { opensAtMs, closesAtMs } = classJoinWindow(fitnessClass);
+
+  if (now < opensAtMs) return "too_early";
+  if (now > closesAtMs) return "closed";
+  return "open";
+}
+
 /**
  * Where a class sits relative to now. Drives UI copy only — the token route
- * makes its own decision, because a client clock is not an access control.
+ * makes its own decision with `decideClassDoor`, because a client clock is not
+ * an access control.
  */
 export function classWindow(
   fitnessClass: ClassTiming,
