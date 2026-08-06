@@ -65,6 +65,10 @@ export async function POST(request: Request) {
 
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
+  // Staff may always be *in* the room; only the host may publish into it. A
+  // trainer covering or observing a colleague's session was being told to buy
+  // a membership, which is the paywall applied to the wrong side of the door.
+  const isStaff = isAdmin || profile?.role === "trainer";
   // A trainer publishes only into their own class. The admin role is the
   // override, so a stand-in coach is a data change, not a code change.
   const isHost = isAdmin || (!!profile && fitnessClass.trainer_id === user.id);
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
   // to read the status field alone, which meant the 20-minute window was copy
   // and not a rule: a token could be minted for a class days out, and one
   // whose trainer never marked it ended stayed open indefinitely.
-  const door = decideClassDoor(fitnessClass, { isHost });
+  const door = decideClassDoor(fitnessClass, { isStaff: isHost || isStaff });
   if (door === "closed") {
     return json({ error: "class_closed" }, 409);
   }
@@ -93,12 +97,13 @@ export async function POST(request: Request) {
   // it read nothing about plan tier, so a one-to-one membership silently
   // included every group class. `decideClassAccess` is now the only rule, and
   // the dashboard and the reminder job call the same one.
-  const subscription = isHost ? null : await getActiveSubscription();
+  const subscription = isStaff ? null : await getActiveSubscription();
   const decision = await decideJoin(
     fitnessClass,
     user.id,
     subscription?.plan_tier ?? null,
     isHost,
+    isStaff,
   );
 
   if (decision === "subscription_required") {

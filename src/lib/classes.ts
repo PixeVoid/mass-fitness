@@ -92,19 +92,20 @@ export type DoorDecision = "open" | "too_early" | "closed";
  * is a field a trainer sets by hand, so treating "live" as "admit anyone"
  * would put the same hole back behind a checkbox. The clock decides.
  *
- * A host is exempt. They are running the session rather than attending it, so
- * they can open the room to set up ahead of the door and cannot be locked out
- * of their own class by an overrun — the case that makes a hard close unkind.
+ * Staff are exempt — the host running the session, and any other trainer or
+ * admin. They can open the room to set up ahead of the door and cannot be
+ * locked out of a class by an overrun, which is the case that makes a hard
+ * close unkind. The window is a rule about customers.
  */
 export function decideClassDoor(
   fitnessClass: ClassTiming,
-  options: { isHost: boolean; now?: number },
+  options: { isStaff: boolean; now?: number },
 ): DoorDecision {
   if (fitnessClass.status === "cancelled" || fitnessClass.status === "ended") {
     return "closed";
   }
 
-  if (options.isHost) return "open";
+  if (options.isStaff) return "open";
 
   const now = options.now ?? Date.now();
   const { opensAtMs, closesAtMs } = classJoinWindow(fitnessClass);
@@ -176,6 +177,9 @@ export function buildNextClass(
   if (!candidate) return { nextClass: null, nowMs };
 
   const isHost = profile.role === "admin" || candidate.trainer_id === profile.id;
+  // Same reason the door and the paywall exempt them: a coach with no
+  // membership was shown a countdown ending in a locked button.
+  const isStaff = profile.role === "trainer" || profile.role === "admin";
 
   return {
     nowMs,
@@ -186,7 +190,7 @@ export function buildNextClass(
       formattedTime: formatClassTime(candidate.scheduled_at),
       durationMinutes: candidate.duration_minutes,
       ...classJoinWindow(candidate),
-      canJoin: !candidate.is_premium || hasMembership || isHost,
+      canJoin: !candidate.is_premium || hasMembership || isHost || isStaff,
       isHost,
     },
   };

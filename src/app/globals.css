@@ -37,6 +37,13 @@
   /* Status dot accent — kept as its own token (rather than inlined in
      .live-dot) since this is expected to be tuned per-status later. */
   --live-dot-color: #22c55e;
+
+  /* Destructive actions. The only hue in the palette besides the AI ring, and
+     it earns its place: "delete" must not look like every other button on the
+     page when it is the one action that cannot be undone. */
+  --danger: #b42318;
+  --danger-fg: #ffffff;
+  --danger-soft: rgba(180, 35, 24, 0.09);
 }
 
 /* Dark values live in a single place and are applied from two selectors:
@@ -61,6 +68,12 @@
 
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
       0 12px 32px -16px rgba(0, 0, 0, 0.7);
+
+    /* Lifted and desaturated: #b42318 on a near-black page fails contrast and
+       reads brown rather than red. */
+    --danger: #ff8a80;
+    --danger-fg: #1a0603;
+    --danger-soft: rgba(255, 138, 128, 0.13);
   }
 }
 
@@ -82,6 +95,10 @@
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
     0 12px 32px -16px rgba(0, 0, 0, 0.7);
+
+  --danger: #ff8a80;
+  --danger-fg: #1a0603;
+  --danger-soft: rgba(255, 138, 128, 0.13);
 }
 
 @theme inline {
@@ -96,6 +113,9 @@
   --color-overlay: var(--overlay);
   --color-inverse-bg: var(--inverse-bg);
   --color-inverse-fg: var(--inverse-fg);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
 
   --font-display: var(--font-instrument), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -291,14 +311,149 @@ body {
     box-shadow: 0 0 0 4px var(--overlay);
   }
 
+  /* --- Staff CTA --------------------------------------------------------
+     The Admin and Schedule buttons on the dashboard. Same conic ring as the
+     AI CTA and deliberately quieter than it — a third of the opacity and a
+     much slower turn. These are permanent fixtures for one or two people,
+     not the loudest thing on a page a stranger is reading, and the AI CTA
+     has to stay the brightest object on screen.                          */
+
+  .btn-staff {
+    position: relative;
+    border-color: transparent;
+  }
+
+  .btn-staff::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 999px;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--ai-angle),
+      #5b8def,
+      #9b6bff,
+      #4fd8a3,
+      #5b8def
+    );
+    opacity: 0.65;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: ai-border-spin 12s linear infinite;
+    pointer-events: none;
+  }
+
+  .btn-staff:hover::before {
+    opacity: 1;
+  }
+
+  /* --- Destructive actions ----------------------------------------------
+     Delete used to look exactly like Save. The colour is the warning, and it
+     is worth breaking a monochrome palette for: an irreversible action that
+     looks identical to a reversible one is a design defect, not a style
+     choice. `.btn-quiet-danger` stays neutral until hover, for rows where a
+     column of red buttons would be the loudest thing on the page.        */
+
+  .btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--danger-fg);
+  }
+
+  .btn-danger:hover {
+    box-shadow: 0 0 0 4px var(--danger-soft);
+  }
+
+  .btn-quiet-danger {
+    border-color: var(--line-strong);
+    color: var(--danger);
+    background: transparent;
+  }
+
+  .btn-quiet-danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--danger-fg);
+  }
+
+  /* --- Selectable options -----------------------------------------------
+     Selection used to be `bg-surface` against `bg-paper`: a 3% difference in
+     lightness, which is invisible in daylight, invisible in dark mode, and
+     invisible to anyone who does not already know which one they picked. A
+     choice the user cannot see they have made is a broken control.
+
+     Three signals, because one is never enough: a 2px ring in the text
+     colour, a raised fill, and an explicit badge. The ring is an inset
+     box-shadow rather than a border so it cannot shift the grid it sits in —
+     these live in a `gap-px` grid where a real border would reflow the row. */
+
+  .pick {
+    position: relative;
+    background: var(--paper);
+    transition:
+      background-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+
+  .pick:hover {
+    background: var(--surface);
+  }
+
+  .pick-selected,
+  .pick-selected:hover {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+
+  /* Radio rows. The native dot stays the control — it is what a screen reader
+     and a keyboard both understand — but a 16px dot is not enough feedback on
+     a full-width row, which is how someone ends up paying for the group above
+     the one they meant. `:has()` lifts the whole row and needs no state. */
+
+  .pick-row {
+    transition:
+      background-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+
+  .pick-row:has(input:checked) {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+
+  .pick-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+    padding: 0.1875rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
   /* --- Active nav pill --------------------------------------------------
      The header's "you are here" marker. It used to be a flat inverse fill,
      which on a monochrome site made an active section look identical to a
      solid button — the highlight read as an affordance rather than as state.
      It now carries a thin ring drawn from the same conic gradient as .btn-ai,
-     dialled well back: half the opacity, twice the period. The AI CTA is the
-     loudest thing on the page by design and this must not compete with it, but
-     sharing the gradient keeps "this is the live one" a single idea.
+     sharing the gradient so that "this is the live one" is a single idea
+     across the site. It was originally dialled back to 0.5 opacity over a
+     1.5px band, which on the small account pill disappeared into the dark
+     header entirely — a highlight nobody can see is not a highlight. Now full
+     opacity over a 2px band, with a soft outer bloom so it reads at a glance
+     against both papers. It still turns at half the AI CTA's speed, which is
+     what keeps it from competing.
 
      The ring is a masked pseudo-element rather than a border, because a
      gradient cannot paint a border directly — border-box background-clip is
@@ -313,9 +468,9 @@ body {
   .nav-pill-active::before {
     content: "";
     position: absolute;
-    inset: -1.5px;
+    inset: -2px;
     border-radius: 999px;
-    padding: 1.5px;
+    padding: 2px;
     background: conic-gradient(
       from var(--ai-angle),
       #5b8def,
@@ -323,7 +478,7 @@ body {
       #4fd8a3,
       #5b8def
     );
-    opacity: 0.5;
+    opacity: 1;
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -333,6 +488,18 @@ body {
       linear-gradient(#000 0 0);
     mask-composite: exclude;
     animation: ai-border-spin 14s linear infinite;
+    pointer-events: none;
+  }
+
+  /* A soft bloom just outside the ring. Without it the 2px band still has to
+     survive against a near-black header at small sizes; with it the pill
+     reads as lit rather than merely outlined. */
+  .nav-pill-active::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 999px;
+    box-shadow: 0 0 12px -2px rgba(123, 130, 255, 0.55);
     pointer-events: none;
   }
 

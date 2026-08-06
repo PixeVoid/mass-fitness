@@ -78,7 +78,7 @@ describe("decideClassDoor", () => {
   const member = (
     now: number,
     over: Partial<Omit<typeof base, "status">> & { status?: ClassStatus } = {},
-  ) => decideClassDoor({ ...base, ...over }, { isHost: false, now });
+  ) => decideClassDoor({ ...base, ...over }, { isStaff: false, now });
 
   it("refuses a member before the door opens", () => {
     expect(member(START - GRACE - 1)).toBe("too_early");
@@ -111,17 +111,17 @@ describe("decideClassDoor", () => {
     );
   });
 
-  it("lets the host in early to set up, and back in after an overrun", () => {
+  it("lets staff in early to set up, and back in after an overrun", () => {
     const host = (now: number) =>
-      decideClassDoor(base, { isHost: true, now });
+      decideClassDoor(base, { isStaff: true, now });
 
     expect(host(START - 6 * 60 * 60_000)).toBe("open");
     expect(host(START + 45 * 60_000 + GRACE + 1)).toBe("open");
   });
 
-  it("still shuts a cancelled class on the host", () => {
+  it("still shuts a cancelled class on staff", () => {
     expect(
-      decideClassDoor({ ...base, status: "cancelled" }, { isHost: true }),
+      decideClassDoor({ ...base, status: "cancelled" }, { isStaff: true }),
     ).toBe("closed");
   });
 

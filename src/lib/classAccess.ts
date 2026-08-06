@@ -19,6 +19,16 @@ export interface ClassAccessInput {
   isPremium: boolean;
   /** Whoever runs the class is never a customer of it. */
   isHost: boolean;
+  /**
+   * Any trainer or admin, whether or not this class is theirs.
+   *
+   * Separate from `isHost` because they answer different questions. `isHost`
+   * decides who may *publish* — run the session, camera on. `isStaff` decides
+   * who may *be in the room*, and staff always may: a coach dropping into a
+   * colleague's session to cover it, or to watch, is normal, and being asked
+   * to buy a membership to do their job is not.
+   */
+  isStaff: boolean;
   /** Tier of the active subscription, or null when there isn't one. */
   planTier: PlanTier | null;
   memberGroupIds: readonly string[];
@@ -28,6 +38,12 @@ export interface ClassAccessInput {
 
 export function decideClassAccess(input: ClassAccessInput): JoinDecision {
   if (input.isHost) return "ok";
+
+  // Staff are not customers of the product. Every other rule below is a
+  // pricing rule, and none of them should ever be applied to the people
+  // running the classes — a trainer who tapped a colleague's session was
+  // being told to buy a membership.
+  if (input.isStaff) return "ok";
 
   if (input.audience === "groups") {
     // Targeting is checked before payment and regardless of it. A free class

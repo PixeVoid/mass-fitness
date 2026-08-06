@@ -38,26 +38,26 @@ describe("open-redirect defences", () => {
 describe("class access under degenerate input", () => {
   it("is not fooled by an empty group id on either side", () => {
     expect(canAccessClass({
-      audience: "groups", isPremium: true, isHost: false, planTier: "group",
+      audience: "groups", isPremium: true, isHost: false, isStaff: false, planTier: "group",
       memberGroupIds: [""], classGroupIds: [],
     })).toBe(false);
 
     expect(canAccessClass({
-      audience: "groups", isPremium: true, isHost: false, planTier: "group",
+      audience: "groups", isPremium: true, isHost: false, isStaff: false, planTier: "group",
       memberGroupIds: [], classGroupIds: [""],
     })).toBe(false);
   });
 
   it("does not treat a duplicated group id as two matches", () => {
     expect(canAccessClass({
-      audience: "groups", isPremium: true, isHost: false, planTier: "group",
+      audience: "groups", isPremium: true, isHost: false, isStaff: false, planTier: "group",
       memberGroupIds: ["g1", "g1"], classGroupIds: ["g1"],
     })).toBe(true);
   });
 
   it("is case-sensitive on group ids — they are uuids, not names", () => {
     expect(canAccessClass({
-      audience: "groups", isPremium: true, isHost: false, planTier: "group",
+      audience: "groups", isPremium: true, isHost: false, isStaff: false, planTier: "group",
       memberGroupIds: ["ABC"], classGroupIds: ["abc"],
     })).toBe(false);
   });

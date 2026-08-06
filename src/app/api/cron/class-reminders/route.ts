@@ -160,6 +160,11 @@ async function handle(request: Request) {
         audience: fitnessClass.audience,
         isPremium: fitnessClass.is_premium,
         isHost: false,
+        // Everyone in `recipients` came from the subscriptions table, so
+        // nobody here is being judged as staff. A trainer with no membership
+        // is simply not in this list — they are reminded by their own
+        // schedule at /coach, not by the member reminder.
+        isStaff: false,
         planTier: tierByUser.get(profile.id) ?? null,
         memberGroupIds: [...(groupsByUser.get(profile.id) ?? [])],
         classGroupIds: classTargetIds,

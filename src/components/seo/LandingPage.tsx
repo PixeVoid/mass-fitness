@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import SiteHeader, { HeaderSpacer } from "@/components/SiteHeader";
+import { getVisitorState } from "@/lib/auth/dal";
 import { formatPaise } from "@/lib/plans";
 import { getPlans } from "@/lib/pricing";
 
@@ -39,7 +40,9 @@ export default async function SeoLandingPage({
   sections: LandingSection[];
   closing: string;
 }) {
-  const plans = await getPlans();
+  const [plans, visitor] = await Promise.all([getPlans(), getVisitorState()]);
+  // Same rule as the landing page: don't sell a plan to someone who has one.
+  const ctaHref = visitor.covered ? "/dashboard" : "/subscribe";
   const monthly = plans.filter((plan) => plan.duration === "monthly");
 
   return (
@@ -58,8 +61,8 @@ export default async function SeoLandingPage({
         </p>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-          <Link href="/subscribe" className="btn btn-solid">
-            See the plans
+          <Link href={ctaHref} className="btn btn-solid">
+            {visitor.covered ? "Go to your dashboard" : "See the plans"}
           </Link>
           <Link href="/assessment" className="btn btn-ai">
             Get your fitness score
@@ -143,8 +146,8 @@ export default async function SeoLandingPage({
             {closing}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/subscribe" className="btn btn-solid">
-              Start training
+            <Link href={ctaHref} className="btn btn-solid">
+              {visitor.covered ? "Go to your dashboard" : "Start training"}
             </Link>
             <Link href="/faq" className="btn btn-outline">
               Read the FAQ

@@ -34,7 +34,14 @@ export default async function SubscribePage({
 }: {
   searchParams: Promise<{ error?: string; plan?: string }>;
 }) {
-  await requireOnboardedProfile();
+  const profile = await requireOnboardedProfile();
+
+  // Staff are not customers. A trainer who followed a pricing link — or was
+  // sent here by a paywall that should never have fired on them — was being
+  // shown a bill for the classes they teach.
+  if (profile.role === "trainer" || profile.role === "admin") {
+    redirect("/dashboard?notice=staff-no-payment");
+  }
 
   // Nothing to sell someone who already has a live membership.
   if (await getActiveSubscription()) {

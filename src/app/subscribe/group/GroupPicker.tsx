@@ -44,7 +44,7 @@ export function GroupChoices({ groups }: { groups: PickableGroup[] }) {
             {/* Grid rather than flex-wrap: wrapping dropped "3 of 12 left"
                 onto its own line, left-aligned under the radio, where it read
                 as a stray label instead of a counter. Two columns hold. */}
-            <label className="grid cursor-pointer grid-cols-[1fr_auto] items-start gap-x-4 p-5 transition-colors duration-300 hover:bg-surface sm:gap-x-6 sm:p-6">
+            <label className="pick-row grid cursor-pointer grid-cols-[1fr_auto] items-start gap-x-4 p-5 hover:bg-surface sm:gap-x-6 sm:p-6">
               <span className="flex min-w-0 items-start gap-4">
                 <input
                   type="radio"
@@ -96,7 +96,7 @@ export function CoachChoices({ coaches }: { coaches: PickableCoach[] }) {
       <ul className="flex flex-col gap-px border-t border-line bg-line">
         {coaches.map((coach) => (
           <li key={coach.id} className="bg-paper">
-            <label className="flex cursor-pointer flex-wrap items-center justify-between gap-x-6 gap-y-3 p-5 transition-colors duration-300 hover:bg-surface sm:p-6">
+            <label className="pick-row flex cursor-pointer flex-wrap items-center justify-between gap-x-6 gap-y-3 p-5 hover:bg-surface sm:p-6">
               <span className="flex items-center gap-4">
                 <input
                   type="radio"

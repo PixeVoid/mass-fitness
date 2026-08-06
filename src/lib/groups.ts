@@ -62,7 +62,12 @@ export const getMyGroups = cache(async (userId: string): Promise<TrainingGroup[]
  */
 export async function filterClassesForMember(
   classes: FitnessClass[],
-  access: { groupIds: readonly string[]; planTier: PlanTier | null },
+  access: {
+    groupIds: readonly string[];
+    planTier: PlanTier | null;
+    /** Trainers and admins see the whole schedule — see decideClassAccess. */
+    isStaff: boolean;
+  },
   limit?: number,
 ): Promise<FitnessClass[]> {
   const targetsByClass = await loadClassTargets(
@@ -74,6 +79,7 @@ export async function filterClassesForMember(
       audience: item.audience,
       isPremium: item.is_premium,
       isHost: false,
+      isStaff: access.isStaff,
       planTier: access.planTier,
       memberGroupIds: access.groupIds,
       classGroupIds: [...(targetsByClass.get(item.id) ?? [])],
@@ -118,8 +124,9 @@ export async function decideJoin(
   userId: string,
   planTier: PlanTier | null,
   isHost: boolean,
+  isStaff: boolean,
 ): Promise<JoinDecision> {
-  if (isHost) return "ok";
+  if (isHost || isStaff) return "ok";
 
   const supabase = createAdminClient();
   const [{ data: targets }, { data: memberships }] = await Promise.all([
@@ -133,6 +140,7 @@ export async function decideJoin(
     audience: fitnessClass.audience,
     isPremium: fitnessClass.is_premium,
     isHost: false,
+    isStaff: false,
     planTier,
     memberGroupIds: (memberships ?? []).map((row) => row.group_id),
     classGroupIds: (targets ?? []).map((row) => row.group_id),

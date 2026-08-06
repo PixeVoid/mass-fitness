@@ -20,12 +20,55 @@ function input(overrides: Partial<ClassAccessInput> = {}): ClassAccessInput {
     audience: "all",
     isPremium: true,
     isHost: false,
+    isStaff: false,
     planTier: "group",
     memberGroupIds: [],
     classGroupIds: [],
     ...overrides,
   };
 }
+
+describe("staff", () => {
+  // The bug: a trainer tapped a colleague's class and was told to buy a
+  // membership. Being in the room and being allowed to publish into it are
+  // different questions, and only the second one is about who runs the class.
+  it("get into a class they do not host, with no membership", () => {
+    expect(
+      decideClassAccess(input({ isStaff: true, isHost: false, planTier: null })),
+    ).toBe("ok");
+  });
+
+  it("get into a group class they are not a member of", () => {
+    expect(
+      decideClassAccess(
+        input({
+          isStaff: true,
+          isHost: false,
+          planTier: null,
+          audience: "groups",
+          classGroupIds: ["g1"],
+          memberGroupIds: [],
+        }),
+      ),
+    ).toBe("ok");
+  });
+
+  it("are never charged for the one-to-one tier's exclusion", () => {
+    // A member on a one-to-one plan is kept out of group classes on purpose.
+    // A coach who happens to hold that plan is not a customer of it.
+    expect(
+      decideClassAccess(input({ isStaff: true, planTier: "one_to_one" })),
+    ).toBe("ok");
+  });
+
+  it("does not make an ordinary member staff", () => {
+    // The negative half. Without it, defaulting the flag to true somewhere
+    // would open every class to everyone and every other test would pass.
+    expect(decideClassAccess(input({ isStaff: false, planTier: null }))).toBe(
+      "subscription_required",
+    );
+  });
+});
 
 describe("hosts", () => {
   it("always get in, with no membership and no group", () => {

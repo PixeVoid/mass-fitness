@@ -5,7 +5,7 @@ import { getActiveSubscription, requireOnboardedProfile } from "@/lib/auth/dal";
 import NextClassBanner from "@/components/classes/NextClassBanner";
 import {
   buildNextClass,
-  classWindow,
+  decideClassDoor,
   formatClassTime,
   getUpcomingClasses,
 } from "@/lib/classes";
@@ -33,6 +33,8 @@ const NOTICES: Record<string, string> = {
   "already-subscribed": "You already have an active membership — nothing more to pay.",
   "group-joined": "You're in the group. Your coach knows you're coming.",
   "coach-assigned": "Your coach has been told. They'll be in touch to agree your times.",
+  "staff-no-payment":
+    "You don't need a membership — you have access to every class as staff.",
 };
 
 /** How many upcoming sessions the dashboard lists. */
@@ -82,13 +84,14 @@ export default async function DashboardPage({
   // otherwise see nothing at all.
   const groupIds = isStaff ? [] : await getMyGroupIds(profile.id);
   const myGroups = isStaff ? [] : await getMyGroups(profile.id);
-  const visibleClasses = isStaff
-    ? classes.slice(0, DASHBOARD_CLASS_LIMIT)
-    : await filterClassesForMember(
-        classes,
-        { groupIds, planTier: subscription?.plan_tier ?? null },
-        DASHBOARD_CLASS_LIMIT,
-      );
+  // One rule rather than a branch: `decideClassAccess` already returns "ok"
+  // for staff, so passing the flag gets a coach the whole schedule without a
+  // second definition of what staff can see sitting here.
+  const visibleClasses = await filterClassesForMember(
+    classes,
+    { groupIds, planTier: subscription?.plan_tier ?? null, isStaff },
+    DASHBOARD_CLASS_LIMIT,
+  );
 
   const awaitingGroup = needsGroup(profile, Boolean(subscription), groupIds.length);
 
@@ -102,7 +105,18 @@ export default async function DashboardPage({
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
-          <p className="label text-faint">Dashboard</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="label text-faint">Dashboard</p>
+            {/* A trainer had no way to tell, from their own dashboard, that
+                they were signed in as one — admins got a labelled button and
+                trainers got nothing. The role is the thing that changes what
+                every other control on this page does, so it is stated. */}
+            {isStaff && (
+              <span className="pick-badge">
+                {profile.role === "admin" ? "Admin" : "Trainer"}
+              </span>
+            )}
+          </div>
           <h1 className="display mt-4 text-[2.25rem] text-ink sm:text-[3rem]">
             Welcome back, <em>{profile.name}.</em>
           </h1>
@@ -110,12 +124,12 @@ export default async function DashboardPage({
 
         <div className="flex items-center gap-3">
           {profile.role === "admin" && (
-            <Link href="/admin" className="btn btn-outline">
+            <Link href="/admin" className="btn btn-outline btn-staff">
               Admin
             </Link>
           )}
-          {(profile.role === "trainer" || profile.role === "admin") && (
-            <Link href="/coach" className="btn btn-outline">
+          {isStaff && (
+            <Link href="/coach" className="btn btn-outline btn-staff">
               Schedule
             </Link>
           )}
@@ -215,7 +229,6 @@ export default async function DashboardPage({
         ) : (
           <ul className="mt-6">
             {visibleClasses.map((item) => {
-              const window = classWindow(item);
               // Mirrors the rule in /api/live/token: whoever is running the
               // class is not a customer of it. Without this a trainer whose
               // own membership lapsed gets "Members only" on the class they
@@ -223,7 +236,13 @@ export default async function DashboardPage({
               // them in, but the dashboard gives them no way to ask.
               const isHost =
                 profile.role === "admin" || item.trainer_id === profile.id;
-              const locked = item.is_premium && !subscription && !isHost;
+              // The same door the token route enforces, asked the same way.
+              // Reading `classWindow` here instead meant a coach saw "Not
+              // started" with no button on a class the server would happily
+              // have let them into — no way to go and set up, and no way to
+              // teach a session that had overrun its slot.
+              const door = decideClassDoor(item, { isStaff: isStaff || isHost });
+              const locked = item.is_premium && !subscription && !isStaff && !isHost;
 
               return (
                 <li
@@ -253,16 +272,16 @@ export default async function DashboardPage({
                       <Link href="/subscribe" className="btn btn-outline w-full sm:w-auto">
                         Members only
                       </Link>
-                    ) : window === "open" ? (
+                    ) : door === "open" ? (
                       <Link
                         href={`/live/${item.id}`}
                         className="btn btn-solid w-full sm:w-auto"
                       >
-                        {isHost ? "Start class" : "Join now"}
+                        {isHost ? "Start class" : isStaff ? "Sit in" : "Join now"}
                       </Link>
                     ) : (
                       <span className="label text-faint">
-                        {window === "ended" ? "Ended" : "Not started"}
+                        {door === "closed" ? "Ended" : "Not started"}
                       </span>
                     )}
                   </div>

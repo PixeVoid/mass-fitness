@@ -73,15 +73,20 @@ export default function PlanPicker({
                 type="button"
                 onClick={() => setTier(option.tier)}
                 aria-pressed={active}
-                className={`flex flex-col p-6 text-left transition-colors duration-300 sm:p-8 ${
-                  active ? "bg-surface" : "bg-paper hover:bg-surface"
+                className={`pick flex flex-col p-6 text-left sm:p-8 ${
+                  active ? "pick-selected" : ""
                 }`}
               >
                 <span className="flex items-baseline justify-between gap-3">
                   <span className="display-sm text-[1.5rem] text-ink">
                     {option.label}
                   </span>
-                  {active && <span className="label text-faint">Selected</span>}
+                  {active && (
+                    <span className="pick-badge shrink-0">
+                      <CheckMark />
+                      Selected
+                    </span>
+                  )}
                 </span>
                 <span className="mt-3 text-[0.9375rem] leading-relaxed text-muted">
                   {option.summary}
@@ -123,8 +128,8 @@ export default function PlanPicker({
                 type="button"
                 onClick={() => setDuration(option.duration)}
                 aria-pressed={active}
-                className={`flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 p-5 text-left transition-colors duration-300 sm:p-6 ${
-                  active ? "bg-surface" : "bg-paper hover:bg-surface"
+                className={`pick flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 p-5 text-left sm:p-6 ${
+                  active ? "pick-selected" : ""
                 }`}
               >
                 <span className="flex items-baseline gap-3">
@@ -133,6 +138,12 @@ export default function PlanPicker({
                   </span>
                   {saving && (
                     <span className="label text-faint">Save {saving}</span>
+                  )}
+                  {active && (
+                    <span className="pick-badge">
+                      <CheckMark />
+                      Selected
+                    </span>
                   )}
                 </span>
                 <span className="flex items-baseline gap-3">
@@ -163,6 +174,30 @@ export default function PlanPicker({
         </div>
       )}
     </form>
+  );
+}
+
+/**
+ * A tick, not a colour swap.
+ *
+ * The badge is the third signal after the ring and the fill, and it carries
+ * the state in a way that survives a monochrome screen, a colour-blind reader
+ * and a screenshot — none of which the old 3% background difference did.
+ */
+function CheckMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="h-3 w-3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 8.5l3.5 3.5L13 4.5" />
+    </svg>
   );
 }
 

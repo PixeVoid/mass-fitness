@@ -142,6 +142,43 @@ export const getHeaderIdentity = cache(
   },
 );
 
+/**
+ * What the marketing pages need to know before pointing someone at a price.
+ *
+ * The landing page sells to everyone, which was fine until it also started
+ * being the page a signed-in member lands on. Tapping a class sent an admin,
+ * a trainer and a fully paid-up member all to the pricing section and then
+ * into checkout for a plan they already have — the site behaving as though
+ * nobody who visits it could possibly be a customer already.
+ *
+ * `covered` is the single question every CTA on those pages should ask: is
+ * there anything left to sell this person? Staff are covered because they are
+ * not customers at all; a member with a live subscription is covered because
+ * they have already bought it.
+ */
+export interface VisitorState {
+  signedIn: boolean;
+  isStaff: boolean;
+  covered: boolean;
+}
+
+export const getVisitorState = cache(async (): Promise<VisitorState> => {
+  // The anonymous path costs one cookie check and nothing else — the landing
+  // page is mostly served to people with no session at all.
+  if (!(await hasSessionCookie())) {
+    return { signedIn: false, isStaff: false, covered: false };
+  }
+
+  const profile = await getProfile();
+  if (!profile) return { signedIn: false, isStaff: false, covered: false };
+
+  const staff = profile.role === "trainer" || profile.role === "admin";
+  if (staff) return { signedIn: true, isStaff: true, covered: true };
+
+  const subscription = await getActiveSubscription();
+  return { signedIn: true, isStaff: false, covered: Boolean(subscription) };
+});
+
 export const isAdmin = cache(async (): Promise<boolean> => {
   const profile = await getProfile();
   return profile?.role === "admin";

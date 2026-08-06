@@ -13,6 +13,7 @@ import {
   TargetIcon,
   UsersIcon,
 } from "@/components/icons";
+import { getVisitorState } from "@/lib/auth/dal";
 import { formatPaise } from "@/lib/plans";
 import { getPlans } from "@/lib/pricing";
 import type { PlanTier } from "@/lib/db-types";
@@ -41,7 +42,11 @@ const PLAN_ICONS: Record<PlanTier, typeof UsersIcon> = {
 };
 
 export default async function Home() {
-  const plans = await getPlans();
+  // Whether there is anything left to sell this visitor. The landing page is
+  // the same page for everyone, but its calls to action are not: an admin, a
+  // coach and a paid-up member were all being pushed back into checkout.
+  const [plans, visitor] = await Promise.all([getPlans(), getVisitorState()]);
+  const classesHref = visitor.covered ? "/dashboard" : "#pricing";
   const monthlyPlans = plans.filter((plan) => plan.duration === "monthly");
 
   return (
@@ -81,7 +86,7 @@ export default async function Home() {
             }
             body="Load, volume and complexity step up week over week. Pick the stimulus — we handle the periodisation."
           />
-          <ClassGrid />
+          <ClassGrid href={classesHref} />
         </section>
 
         {/* HOW IT WORKS */}
@@ -191,12 +196,22 @@ export default async function Home() {
                   {/* Straight into checkout with this tier preselected.
                       /subscribe is behind auth, so an anonymous visitor gets
                       the login screen and lands back here after — one redirect
-                      rather than a mailto and a hope. */}
+                      rather than a mailto and a hope.
+
+                      Unless there is nothing to sell them. A member who has
+                      already paid, and staff who never pay at all, were being
+                      offered a second purchase of what they have; that reads
+                      as a broken site, and for a member it is a real risk of
+                      being charged twice. */}
                   <Link
-                    href={`/subscribe?plan=${plan.id}`}
+                    href={visitor.covered ? "/dashboard" : `/subscribe?plan=${plan.id}`}
                     className="btn plan-cta mt-10 w-full"
                   >
-                    Choose {plan.label.toLowerCase()}
+                    {visitor.isStaff
+                      ? "Go to your dashboard"
+                      : visitor.covered
+                        ? "You're on this — open dashboard"
+                        : `Choose ${plan.label.toLowerCase()}`}
                   </Link>
                 </div>
               );
