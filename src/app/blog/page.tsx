@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import SiteHeader, { HeaderSpacer } from "@/components/SiteHeader";
+import { isSafeImageSrc } from "@/components/blog/Markdown";
 import { formatPostDate, getPublishedPosts, readingTime } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -42,8 +43,9 @@ export default async function BlogIndexPage() {
               <li key={post.id} className="border-t border-line">
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="group flex flex-col gap-3 py-8 sm:py-10"
+                  className="group grid grid-cols-1 gap-x-8 gap-y-4 py-8 sm:grid-cols-[1fr_auto] sm:py-10"
                 >
+                  <div className="flex flex-col gap-3">
                   <div className="label flex flex-wrap items-center gap-x-4 gap-y-2 text-faint">
                     {post.published_at && (
                       <span className="numeric">
@@ -61,6 +63,22 @@ export default async function BlogIndexPage() {
                     <p className="max-w-xl text-[0.9375rem] leading-relaxed text-muted">
                       {post.excerpt}
                     </p>
+                  )}
+                  </div>
+
+                  {/* A thumbnail, not a hero: the index is a list you scan,
+                      and a full-width image per row turns it into a feed. */}
+                  {post.cover_image_url && isSafeImageSrc(post.cover_image_url) && (
+                    // An author can point a cover at any host; next/image
+                    // needs each one configured up front.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={post.cover_image_url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-40 w-full rounded-xl border border-line object-cover transition-opacity duration-300 group-hover:opacity-80 sm:h-28 sm:w-44"
+                    />
                   )}
                 </Link>
               </li>

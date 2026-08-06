@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
 import SiteHeader, { HeaderSpacer } from "@/components/SiteHeader";
-import Markdown from "@/components/blog/Markdown";
+import Markdown, { isSafeImageSrc } from "@/components/blog/Markdown";
 import {
   formatPostDate,
   getPostBySlug,
@@ -36,6 +36,11 @@ export async function generateMetadata({
       description,
       url: `/blog/${post.slug}`,
       publishedTime: post.published_at ?? undefined,
+      // Only an absolute URL is usable as a social preview — a relative path
+      // resolves against the crawler, not against us.
+      images: post.cover_image_url?.startsWith("http")
+        ? [post.cover_image_url]
+        : undefined,
     },
   };
 }
@@ -95,6 +100,21 @@ export default async function PostPage({
           )}
           <span className="numeric">{readingTime(post.body)}</span>
         </div>
+
+        {post.cover_image_url && isSafeImageSrc(post.cover_image_url) && (
+          <figure className="mt-12">
+            {/* eslint-disable-next-line @next/next/no-img-element -- see the
+                renderer: covers can point at any host. */}
+            <img
+              src={post.cover_image_url}
+              alt={post.cover_image_alt ?? ""}
+              // The lead image is above the fold, so it is the one image on
+              // the page that must not be lazy — deferring it delays the
+              // largest contentful paint by a round trip.
+              className="w-full rounded-2xl border border-line"
+            />
+          </figure>
+        )}
 
         <div className="mt-16">
           <Markdown body={post.body} />

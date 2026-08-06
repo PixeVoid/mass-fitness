@@ -101,3 +101,59 @@ describe("inline", () => {
     expect(html).toContain("2 * 3 = 6");
   });
 });
+
+describe("images", () => {
+  it("renders a standalone image as a figure, not inside a paragraph", () => {
+    const html = render("![a squat at depth](/img/squat.jpg)");
+    expect(html).toContain("<figure");
+    expect(html).toContain('src="/img/squat.jpg"');
+    // Wrapped in a <p> it would be capped at the prose measure.
+    expect(html).not.toMatch(/<p[^>]*>\s*<figure/);
+  });
+
+  it("uses the alt text for both the alt attribute and the caption", () => {
+    const html = render("![a squat at depth](/img/squat.jpg)");
+    expect(html).toContain('alt="a squat at depth"');
+    expect(html).toContain("<figcaption");
+    expect(html).toContain("a squat at depth");
+  });
+
+  it("treats empty alt as decorative — no caption", () => {
+    const html = render("![](/img/squat.jpg)");
+    expect(html).toContain('alt=""');
+    expect(html).not.toContain("<figcaption");
+  });
+
+  it("refuses a javascript: src", () => {
+    // The one way an element-based renderer can still execute something.
+    const html = render("![x](javascript:alert)");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("<figure");
+  });
+
+  it("refuses a data: src", () => {
+    // An SVG data URL can carry a script.
+    const html = render("![x](data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=)");
+    expect(html).not.toContain("<img");
+  });
+
+  it("shows an unsafe image verbatim rather than mangling it", () => {
+    // Falling through to the inline pass looked equivalent and was not: the
+    // link tokeniser matched the `[x](…)` half, rejected the URL and emitted
+    // only the label, so the author saw `!x)` and learned nothing.
+    const html = render("![x](javascript:alert)");
+    expect(html).toContain("![x](javascript:alert)");
+  });
+
+  it("accepts http, https and site-relative sources", () => {
+    expect(render("![a](/local.png)")).toContain("<img");
+    expect(render("![a](https://cdn.example.com/x.png)")).toContain("<img");
+    expect(render("![a](http://cdn.example.com/x.png)")).toContain("<img");
+  });
+
+  it("lazy-loads body images", () => {
+    // The cover is the LCP element and is eager; everything in the body is
+    // below the fold by definition.
+    expect(render("![a](/x.png)")).toContain('loading="lazy"');
+  });
+});

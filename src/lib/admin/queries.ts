@@ -19,21 +19,45 @@ export interface MemberRow {
 }
 
 /**
+ * Escapes a search term for PostgREST's `or` filter.
+ *
+ * The value is interpolated into a comma-separated filter expression, so a
+ * comma, a parenthesis or a quote in the term does not just break the query —
+ * it changes which filters are applied. Percent and underscore are `like`
+ * wildcards and a searcher typing them means the literal character.
+ */
+export function escapeSearchTerm(term: string): string {
+  return term.replace(/[%_\\]/g, "\\$&").replace(/[(),."']/g, " ");
+}
+
+/**
  * Members plus their current subscription.
  *
  * Two queries and a join in memory rather than a nested select: at this scale
  * it is not worth the round-trip savings, and the shape stays obvious. Revisit
  * if the member list ever outgrows a single page.
  */
-export async function listMembers(limit = 100): Promise<MemberRow[]> {
+export async function listMembers(
+  limit = 100,
+  /** Matches name or email, case-insensitively. Blank means everyone. */
+  search?: string,
+): Promise<MemberRow[]> {
   const supabase = await createClient();
 
+  let profileQuery = supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const term = search?.trim();
+  if (term) {
+    const safe = escapeSearchTerm(term);
+    profileQuery = profileQuery.or(`name.ilike.%${safe}%,email.ilike.%${safe}%`);
+  }
+
   const [{ data: profiles }, { data: subscriptions }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    profileQuery,
     supabase
       .from("subscriptions")
       .select("*")

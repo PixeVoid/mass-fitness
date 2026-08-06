@@ -48,6 +48,21 @@ const postSchema = z.object({
   body: z.string().trim().min(1, "The post is empty.").max(60_000),
   seoTitle: z.string().trim().max(70).optional().or(z.literal("")),
   seoDescription: z.string().trim().max(180).optional().or(z.literal("")),
+  // Validated as a URL rather than free text: it goes straight into an <img
+  // src>, and `javascript:` there is the one way an image field becomes an
+  // execution path. Relative paths are allowed so a self-hosted asset works.
+  coverImageUrl: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine(
+      (value) =>
+        value === "" || value.startsWith("/") || /^https?:\/\//i.test(value),
+      { message: "The cover image must be a URL, or a path starting with /." },
+    )
+    .optional()
+    .or(z.literal("")),
+  coverImageAlt: z.string().trim().max(200).optional().or(z.literal("")),
   publish: z.string().optional(),
 });
 
@@ -65,6 +80,8 @@ export async function savePost(
     body: formData.get("body"),
     seoTitle: formData.get("seoTitle") ?? "",
     seoDescription: formData.get("seoDescription") ?? "",
+    coverImageUrl: formData.get("coverImageUrl") ?? "",
+    coverImageAlt: formData.get("coverImageAlt") ?? "",
     publish: formData.get("publish") ?? undefined,
   });
 
@@ -72,8 +89,18 @@ export async function savePost(
     return { error: parsed.error.issues[0]?.message ?? "Check the fields." };
   }
 
-  const { id, slug, title, excerpt, body, seoTitle, seoDescription, publish } =
-    parsed.data;
+  const {
+    id,
+    slug,
+    title,
+    excerpt,
+    body,
+    seoTitle,
+    seoDescription,
+    coverImageUrl,
+    coverImageAlt,
+    publish,
+  } = parsed.data;
 
   const supabase = await createClient();
 
@@ -98,6 +125,10 @@ export async function savePost(
     body,
     seo_title: seoTitle || null,
     seo_description: seoDescription || null,
+    cover_image_url: coverImageUrl || null,
+    // Empty alt is meaningful — it marks an image as decorative, which is not
+    // the same as "nobody wrote alt text". Only stored when there is a cover.
+    cover_image_alt: coverImageUrl ? (coverImageAlt ?? "") : null,
     published_at: publishedAt,
     author_id: admin.id,
     updated_at: new Date().toISOString(),

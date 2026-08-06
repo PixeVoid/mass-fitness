@@ -15,6 +15,7 @@ function post(over: Partial<Post> = {}): Post {
   return {
     id: crypto.randomUUID(), slug: "s", title: "T", excerpt: null, body: "",
     seo_title: null, seo_description: null, published_at: null, author_id: null,
+    cover_image_url: null, cover_image_alt: null,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
     ...over,
   };

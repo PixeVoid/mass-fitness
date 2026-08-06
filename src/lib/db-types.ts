@@ -98,6 +98,8 @@ export type Post = {
   body: string;
   seo_title: string | null;
   seo_description: string | null;
+  cover_image_url: string | null;
+  cover_image_alt: string | null;
   published_at: string | null;
   author_id: string | null;
   created_at: string;
@@ -262,6 +264,7 @@ export interface Database {
         Insert: Insertable<
           Post,
           | "id" | "excerpt" | "body" | "seo_title" | "seo_description"
+          | "cover_image_url" | "cover_image_alt"
           | "published_at" | "author_id" | "created_at" | "updated_at"
         >;
         Update: Partial<Post>;

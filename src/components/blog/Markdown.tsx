@@ -23,6 +23,18 @@ export default function Markdown({ body }: { body: string }) {
   return <div className="flex flex-col gap-6">{renderBlocks(body)}</div>;
 }
 
+/**
+ * The same rule the link renderer applies, for the same reason.
+ *
+ * An `<img src>` is not inert: `javascript:` is historically executable in
+ * some contexts, and a `data:` URL can carry an SVG with a script in it. Only
+ * http(s) and site-relative paths render; anything else falls through and is
+ * shown as the literal text the author typed.
+ */
+export function isSafeImageSrc(src: string): boolean {
+  return src.startsWith("/") || /^https?:\/\//i.test(src);
+}
+
 function renderBlocks(body: string): ReactNode[] {
   // Blank lines separate blocks. \r\n is normalised first — a body pasted from
   // Word otherwise arrives as one unbroken paragraph.
@@ -32,6 +44,53 @@ function renderBlocks(body: string): ReactNode[] {
   blocks.forEach((raw, index) => {
     const block = raw.trim();
     if (!block) return;
+
+    // An image on its own line is a figure, not a word in a sentence. Checked
+    // before the heading and paragraph cases so it is never wrapped in a <p>,
+    // which would cap it at the prose measure and centre it badly.
+    const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(block);
+    if (image) {
+      const [, alt, src] = image;
+      if (isSafeImageSrc(src)) {
+        out.push(
+          <figure key={`img-${index}`} className="my-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- a post
+                body can reference any host an author pastes, and next/image
+                requires each one to be configured ahead of time. */}
+            <img
+              src={src}
+              alt={alt}
+              loading="lazy"
+              decoding="async"
+              className="w-full rounded-2xl border border-line"
+            />
+            {/* Alt text doubles as the caption when it reads like one. Empty
+                alt means decorative, and a decorative image needs no caption. */}
+            {alt && (
+              <figcaption className="mt-3 text-[0.8125rem] text-faint">
+                {alt}
+              </figcaption>
+            )}
+          </figure>,
+        );
+        return;
+      }
+
+      // An unsafe src is shown verbatim rather than falling through to the
+      // inline pass. Falling through looked equivalent but was not: the link
+      // tokeniser matches the `[x](…)` half, rejects the URL, and emits just
+      // the label — so `![x](javascript:…)` came out as `!x)`, which tells the
+      // author nothing about what they actually typed.
+      out.push(
+        <p
+          key={`bad-img-${index}`}
+          className="text-[0.9375rem] leading-relaxed text-muted"
+        >
+          {block}
+        </p>,
+      );
+      return;
+    }
 
     const heading = /^(#{2,4})\s+(.*)$/.exec(block);
     if (heading) {
