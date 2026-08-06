@@ -156,9 +156,49 @@ export function formatPaise(paise: number): string {
   }).format(paise / 100);
 }
 
+/**
+ * How many months a duration buys.
+ *
+ * Exported because the payment settlement needs it and has only the stored
+ * `plan_duration` to hand, not a whole Plan — and a second switch statement
+ * over the same three values is a second thing to forget when a duration is
+ * added. This is what a customer's term length is derived from, so it is worth
+ * there being exactly one of it.
+ */
+export function monthsForDuration(duration: PlanDuration): number {
+  return DURATION_META[duration].months;
+}
+
+/**
+ * `from` plus n months, clamped to the end of the target month.
+ *
+ * A plain `setMonth` overflows: 30 November plus three months lands on 2
+ * March, because February has no 30th and JS rolls the excess forward. A
+ * member who bought quarterly on the 30th silently got two extra days, and
+ * every subsequent renewal drifted further from the day they signed up.
+ *
+ * Clamping is what billing systems do and what a customer expects — the last
+ * day of the month is the honest answer to "the 30th of February".
+ */
+export function addMonths(from: Date, months: number): Date {
+  const day = from.getDate();
+
+  // Land on the 1st first, so adding months cannot overflow, then put the day
+  // back — capped at however many days the destination month actually has.
+  const end = new Date(from);
+  end.setDate(1);
+  end.setMonth(end.getMonth() + months);
+  end.setDate(Math.min(day, daysInMonth(end.getFullYear(), end.getMonth())));
+
+  return end;
+}
+
+/** Day 0 of the next month is the last day of this one. */
+function daysInMonth(year: number, monthIndex: number): number {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
 /** End date for a term starting at `from`. Used when a payment activates. */
 export function termEndDate(plan: Plan, from: Date = new Date()): Date {
-  const end = new Date(from);
-  end.setMonth(end.getMonth() + plan.months);
-  return end;
+  return addMonths(from, plan.months);
 }

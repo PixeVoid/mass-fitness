@@ -5,7 +5,7 @@ import type { Subscription } from "@/lib/db-types";
 import { createMockProvider } from "@/lib/payments/mock";
 import { createPhonePeProvider } from "@/lib/payments/phonepe";
 import type { PaymentProvider } from "@/lib/payments/provider";
-import { type Plan, termEndDate } from "@/lib/plans";
+import { addMonths, monthsForDuration, type Plan, termEndDate } from "@/lib/plans";
 import { serverEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -157,12 +157,14 @@ export async function settleCheckout(
     return { outcome: "failed" };
   }
 
-  const plan = {
-    months: monthsFor(existing.plan_duration),
-  };
+  // Term length comes from the catalogue, not from a switch statement here.
+  // This is the number a paying customer's access is measured in, and it had
+  // a second definition that nothing kept in step with the first.
   const startDate = new Date();
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + plan.months);
+  const endDate = addMonths(
+    startDate,
+    monthsForDuration(existing.plan_duration),
+  );
 
   // The `.eq("status", "pending")` is the concurrency guard: whoever loses the
   // race updates zero rows and falls through to reading the active row back.
@@ -191,25 +193,6 @@ export async function settleCheckout(
   return current?.status === "active"
     ? { outcome: "already_active", subscription: current }
     : { outcome: "unknown" };
-}
-
-/**
- * Term length without needing the pricing catalogue.
- *
- * `termEndDate` in plans.ts takes a whole Plan, which means a database round
- * trip for the current prices — and the price is already on the row, so
- * fetching it again to work out a date would be both slower and a chance for
- * the two to disagree.
- */
-function monthsFor(duration: Subscription["plan_duration"]): number {
-  switch (duration) {
-    case "annual":
-      return 12;
-    case "quarterly":
-      return 3;
-    default:
-      return 1;
-  }
 }
 
 // Re-exported so the one place that does have a Plan in hand (the /subscribe
