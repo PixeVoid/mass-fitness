@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import LeaveButton from "@/components/live/LeaveButton";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -99,12 +99,7 @@ function Stage({ title, isHost }: { title: string; isHost: boolean }) {
           </h1>
         </div>
 
-        <Link
-          href="/dashboard"
-          className="btn shrink-0 border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-        >
-          Leave
-        </Link>
+        <LeaveButton isHost={isHost} />
       </header>
 
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">

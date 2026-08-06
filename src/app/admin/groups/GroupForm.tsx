@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createGroup, type AdminGroupState } from "@/app/actions/adminGroups";
 import type { Profile } from "@/lib/db-types";
+import { personOptionLabel } from "@/lib/people";
 
 /**
  * Creating a shared cohort.
@@ -67,7 +68,7 @@ export default function GroupForm({ trainers }: { trainers: Profile[] }) {
           <option value="">Pick a coach</option>
           {trainers.map((trainer) => (
             <option key={trainer.id} value={trainer.id}>
-              {trainer.name ?? trainer.email ?? trainer.id}
+              {personOptionLabel(trainer)}
             </option>
           ))}
         </select>

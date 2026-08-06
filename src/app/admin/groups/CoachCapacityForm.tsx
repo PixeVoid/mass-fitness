@@ -19,7 +19,10 @@ export default function CoachCapacityForm({
   return (
     <form action={action} className="flex items-center gap-3">
       <input type="hidden" name="userId" value={userId} />
-      <label htmlFor={`cap-${userId}`} className="label text-faint">
+      {/* Was `text-faint` at the default field size — the number that decides
+          whether a coach is bookable at all, rendered as the quietest thing
+          on the row and small enough to mis-tap. It is a primary control. */}
+      <label htmlFor={`cap-${userId}`} className="label text-ink">
         Max
       </label>
       <input
@@ -29,11 +32,11 @@ export default function CoachCapacityForm({
         min={0}
         max={50}
         defaultValue={capacity}
-        className="field numeric w-24"
+        className="field numeric w-24 !py-3 text-center !text-[1.125rem] !text-ink"
       />
       <Submit />
       {state.error && (
-        <span role="alert" className="text-[0.8125rem] text-[#d64545]">
+        <span role="alert" className="text-[0.8125rem] text-danger">
           {state.error}
         </span>
       )}

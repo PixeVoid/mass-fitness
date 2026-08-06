@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deletePost } from "@/app/actions/content";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatPostDate } from "@/lib/content";
 import { createClient } from "@/lib/supabase/server";
@@ -47,12 +48,16 @@ export default async function AdminBlogPage({
     return (
       <Editor title="Edit post">
         <PostForm post={post} />
-        <form action={deletePost} className="mt-10 border-t border-line pt-6">
-          <input type="hidden" name="id" value={post.id} />
-          <button type="submit" className="btn btn-outline">
-            Delete post
-          </button>
-        </form>
+        <div className="mt-10 border-t border-line pt-6">
+          <ConfirmSubmit
+            action={deletePost}
+            fields={{ id: post.id }}
+            label="Delete post"
+            confirmLabel="Delete post"
+            title="Delete this post?"
+            body={`"${post.title}" will disappear from the blog and its URL will 404. This cannot be undone.`}
+          />
+        </div>
       </Editor>
     );
   }

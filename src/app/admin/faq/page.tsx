@@ -1,4 +1,5 @@
 import { deleteFaq } from "@/app/actions/content";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { requireAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import FaqForm from "./FaqForm";
@@ -59,15 +60,16 @@ export default async function AdminFaqPage() {
                 <FaqForm faq={faq} categories={categories} />
               </div>
 
-              <form action={deleteFaq} className="mt-4">
-                <input type="hidden" name="id" value={faq.id} />
-                <button
-                  type="submit"
-                  className="link text-[0.8125rem] text-faint"
-                >
-                  Delete
-                </button>
-              </form>
+              <div className="mt-4">
+                <ConfirmSubmit
+                  action={deleteFaq}
+                  fields={{ id: faq.id }}
+                  label="Delete"
+                  confirmLabel="Delete question"
+                  title="Delete this question?"
+                  body={`"${faq.question}" will be removed from the public FAQ immediately. This cannot be undone.`}
+                />
+              </div>
             </li>
           ))}
         </ul>

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createClass, type ActionState } from "@/app/actions/admin";
 import type { Profile } from "@/lib/db-types";
+import { personOptionLabel } from "@/lib/people";
 
 export interface TargetableGroup {
   id: string;
@@ -83,7 +84,7 @@ export default function ClassForm({
           <option value="">Unassigned</option>
           {trainers.map((trainer) => (
             <option key={trainer.id} value={trainer.id}>
-              {trainer.name ?? trainer.phone ?? trainer.id}
+              {personOptionLabel(trainer)}
             </option>
           ))}
         </select>
