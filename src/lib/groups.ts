@@ -271,63 +271,23 @@ export async function getAvailableCoaches(): Promise<AvailableCoach[]> {
     .filter((coach) => coach.clients < coach.capacity);
 }
 
-/** Members who joined one of this coach's groups recently. */
-export interface NewMember {
-  userId: string;
-  name: string | null;
-  email: string | null;
-  fitnessGoal: string | null;
-  groupName: string;
-  joinedAt: string;
-}
-
+/** A join counts as "new" for this long on the coach's page. */
 const NEW_MEMBER_DAYS = 14;
 
-export async function getRecentJoins(coachId: string): Promise<NewMember[]> {
-  const supabase = createAdminClient();
-
-  const { data: groups } = await supabase
-    .from("training_groups")
-    .select("id, name")
-    .eq("trainer_id", coachId);
-
-  if (!groups || groups.length === 0) return [];
-  const names = new Map(groups.map((group) => [group.id, group.name]));
-
-  const since = new Date(
-    Date.now() - NEW_MEMBER_DAYS * 24 * 60 * 60 * 1000,
-  ).toISOString();
-
-  const { data: joins } = await supabase
-    .from("group_members")
-    .select("group_id, user_id, joined_at")
-    .in("group_id", [...names.keys()])
-    .gte("joined_at", since)
-    .order("joined_at", { ascending: false });
-
-  if (!joins || joins.length === 0) return [];
-
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, name, email, fitness_goal")
-    .in(
-      "id",
-      joins.map((join) => join.user_id),
-    );
-
-  const byId = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-
-  return joins.map((join) => {
-    const profile = byId.get(join.user_id);
-    return {
-      userId: join.user_id,
-      name: profile?.name ?? null,
-      email: profile?.email ?? null,
-      fitnessGoal: profile?.fitness_goal ?? null,
-      groupName: names.get(join.group_id) ?? "—",
-      joinedAt: join.joined_at,
-    };
-  });
+/**
+ * The recent arrivals out of a roster already in hand.
+ *
+ * Filtered here rather than re-queried with a date bound: a coach's rosters
+ * are tens of people, and the page has just fetched all of them. Takes `now`
+ * so it stays pure — a component that reads the clock while rendering is
+ * impure, and the compiler says so.
+ */
+export function recentJoins<T extends { joined_at: string }>(
+  rows: readonly T[],
+  nowMs: number = Date.now(),
+): T[] {
+  const since = nowMs - NEW_MEMBER_DAYS * 24 * 60 * 60 * 1000;
+  return rows.filter((row) => new Date(row.joined_at).getTime() >= since);
 }
 
 /**

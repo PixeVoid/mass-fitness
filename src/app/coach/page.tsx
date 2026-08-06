@@ -16,24 +16,29 @@ export const dynamic = "force-dynamic";
 export default async function CoachPage() {
   const coach = await requireCoach();
 
+  const supabase = await createClient();
+
+  // The schedule and the groups are independent reads — neither needs the
+  // other's answer — so they go together. Run one after the other, as this
+  // did, and the page waits for the sum rather than the larger of the two.
+  //
   // Their own classes only. The filter is here for clarity and in the RLS
   // policy for enforcement — an admin viewing this page would otherwise see
   // everyone's, since the admin policy lets them read all of them.
-  const supabase = await createClient();
-  const { data: classes } = await supabase
-    .from("classes")
-    .select("*")
-    .eq("trainer_id", coach.id)
-    .order("scheduled_at", { ascending: true });
-
-  // The coach's own groups, with roster sizes, so the schedule form can offer
-  // them as targets.
-  const { data: myGroups } = await supabase
-    .from("training_groups")
-    .select("id, name, kind")
-    .eq("trainer_id", coach.id)
-    .eq("active", true)
-    .order("name", { ascending: true });
+  const [{ data: classes }, { data: myGroups }] = await Promise.all([
+    supabase
+      .from("classes")
+      .select("*")
+      .eq("trainer_id", coach.id)
+      .order("scheduled_at", { ascending: true }),
+    // With roster sizes below, so the schedule form can offer them as targets.
+    supabase
+      .from("training_groups")
+      .select("id, name, kind")
+      .eq("trainer_id", coach.id)
+      .eq("active", true)
+      .order("name", { ascending: true }),
+  ]);
 
   const { data: rosterRows } = (myGroups ?? []).length
     ? await supabase

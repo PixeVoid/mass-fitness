@@ -243,7 +243,25 @@ export interface Database {
         Row: GroupMember;
         Insert: Insertable<GroupMember, "joined_at">;
         Update: Partial<GroupMember>;
-        Relationships: [];
+        // Declared so PostgREST's embedded selects typecheck. Without it every
+        // "roster with names" read is two round trips — the memberships, then
+        // the profiles — and the coach page was paying that twice over.
+        Relationships: [
+          {
+            foreignKeyName: "group_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "group_members_group_id_fkey";
+            columns: ["group_id"];
+            isOneToOne: false;
+            referencedRelation: "training_groups";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       class_groups: {
         Row: ClassGroup;

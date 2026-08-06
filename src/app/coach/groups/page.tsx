@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/dal";
-import { getAssessmentsForMembers, getRecentJoins } from "@/lib/groups";
+import { getAssessmentsForMembers, recentJoins } from "@/lib/groups";
 import { formatClassTime } from "@/lib/classes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
@@ -11,60 +11,64 @@ export const dynamic = "force-dynamic";
 /**
  * A coach's groups, their rosters, and who has just arrived.
  *
- * The new-member list is derived from `group_members.joined_at` rather than
- * from a notifications table. There is nothing here a timestamp cannot answer,
- * and an unread flag would be a second source of truth about a fact the
- * roster already states.
+ * This page was seven sequential round trips: the profile, then the groups,
+ * then `getRecentJoins` (which fetched the same groups again, then the
+ * memberships, then the profiles), then the assessments, then the memberships
+ * *again*, then the profiles again. At a hundred-odd milliseconds each that is
+ * most of a second spent waiting, and it is what "Your groups takes too long"
+ * actually was.
+ *
+ * It is four now, and two of those are unavoidable — you cannot ask which
+ * groups are yours before knowing who you are. The roster query carries its
+ * profiles with it through an embedded select rather than fetching ids and
+ * then looking them up, and the "new this fortnight" list is derived from the
+ * roster already in hand instead of being a second query with a date filter.
  *
  * Reads with the service role because a roster spans other people's profiles.
- * `requireCoach()` plus the `trainer_id` filter below is what scopes it — the
- * RLS roster policy covers the same ground for anything reading as the user.
+ * `requireCoach()` plus the `trainer_id` filter is what scopes it.
  */
 export default async function CoachGroupsPage() {
   const coach = await requireCoach();
   const supabase = createAdminClient();
 
-  const [{ data: groups }, recentJoins] = await Promise.all([
-    supabase
-      .from("training_groups")
-      .select("*")
-      .eq("trainer_id", coach.id)
-      .order("kind", { ascending: true })
-      .order("name", { ascending: true }),
-    getRecentJoins(coach.id),
-  ]);
+  const { data: groups } = await supabase
+    .from("training_groups")
+    .select("*")
+    .eq("trainer_id", coach.id)
+    .order("kind", { ascending: true })
+    .order("name", { ascending: true });
 
-  // Shown here as well as emailed. Coaches were told to go and find a message
-  // from days ago, which is not where anyone looks before a session.
+  const groupIds = (groups ?? []).map((group) => group.id);
+  const names = new Map((groups ?? []).map((group) => [group.id, group.name]));
+
+  // One query for the whole page's people. The embedded `profiles(...)` is a
+  // join executed in Postgres, so the names arrive with the memberships
+  // instead of costing a second trip to look up ids we already have.
+  const { data: memberships } = groupIds.length
+    ? await supabase
+        .from("group_members")
+        .select(
+          "group_id, user_id, joined_at, profiles(id, name, email, fitness_goal)",
+        )
+        .in("group_id", groupIds)
+        .order("joined_at", { ascending: false })
+    : { data: [] };
+
+  const rows = memberships ?? [];
+
+  // Derived from the rows already fetched rather than re-queried with a date
+  // filter. A coach's rosters are tens of people, not thousands.
+  const arrivals = recentJoins(rows);
+
   const assessments = await getAssessmentsForMembers(
-    recentJoins.map((member) => member.email),
+    arrivals.map((row) => row.profiles?.email ?? null),
   );
 
-  const rosters = new Map<string, { name: string | null; joinedAt: string }[]>();
-  if (groups && groups.length > 0) {
-    const { data: members } = await supabase
-      .from("group_members")
-      .select("group_id, user_id, joined_at")
-      .in(
-        "group_id",
-        groups.map((group) => group.id),
-      );
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, name")
-      .in("id", (members ?? []).map((member) => member.user_id));
-
-    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
-
-    for (const member of members ?? []) {
-      const list = rosters.get(member.group_id) ?? [];
-      list.push({
-        name: nameById.get(member.user_id) ?? null,
-        joinedAt: member.joined_at,
-      });
-      rosters.set(member.group_id, list);
-    }
+  const rosters = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const list = rosters.get(row.group_id) ?? [];
+    list.push(row);
+    rosters.set(row.group_id, list);
   }
 
   return (
@@ -77,49 +81,61 @@ export default async function CoachGroupsPage() {
         </Link>
       </div>
 
-      {recentJoins.length > 0 && (
+      {arrivals.length > 0 && (
         <section className="mt-10 rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <IconLabel glyph={glyphs.newMember}>
             New in the last two weeks
           </IconLabel>
           <ul className="mt-6 flex flex-col gap-5">
-            {recentJoins.map((member) => (
-              <li key={`${member.userId}-${member.joinedAt}`}>
-                <p className="text-[1.0625rem] text-ink">
-                  {member.name ?? "New member"}
-                  <span className="text-faint"> · {member.groupName}</span>
-                </p>
-                {member.fitnessGoal && (
-                  <p className="mt-1 flex items-center gap-2 text-[0.9375rem] text-muted">
-                    <Icon glyph={glyphs.goal} size="sm" className="text-faint" />
-                    Training for: {member.fitnessGoal}
+            {arrivals.map((row) => {
+              const email = row.profiles?.email ?? null;
+              const assessment = email
+                ? assessments.get(email.toLowerCase())
+                : undefined;
+
+              return (
+                <li key={`${row.user_id}-${row.joined_at}`}>
+                  <p className="text-[1.0625rem] text-ink">
+                    {row.profiles?.name ?? "New member"}
+                    <span className="text-faint">
+                      {" "}
+                      · {names.get(row.group_id) ?? "—"}
+                    </span>
                   </p>
-                )}
 
-                {(() => {
-                  const assessment = member.email
-                    ? assessments.get(member.email.toLowerCase())
-                    : undefined;
-                  if (!assessment) return null;
-                  return (
-                    <p className="mt-2 text-[0.9375rem] text-muted">
-                      <span className="numeric text-ink">
-                        {assessment.score ?? "—"}/100
-                      </span>
-                      {assessment.band ? ` · ${assessment.band}` : ""}
-                      {assessment.summary ? ` — ${assessment.summary}` : ""}
+                  {row.profiles?.fitness_goal && (
+                    <p className="mt-1 flex items-center gap-2 text-[0.9375rem] text-muted">
+                      <Icon glyph={glyphs.goal} size="sm" className="text-faint" />
+                      Training for: {row.profiles.fitness_goal}
                     </p>
-                  );
-                })()}
+                  )}
 
-                <p className="label mt-2 flex items-center gap-1.5 text-faint">
-                  <Icon glyph={glyphs.time} size="sm" />
-                  <span className="numeric">
-                    {formatClassTime(member.joinedAt)}
-                  </span>
-                </p>
-              </li>
-            ))}
+                  {assessment && (
+                    <p className="mt-2 flex items-center gap-2 text-[0.9375rem] text-muted">
+                      <Icon
+                        glyph={glyphs.assessment}
+                        size="sm"
+                        className="text-faint"
+                      />
+                      <span>
+                        <span className="numeric text-ink">
+                          {assessment.score ?? "—"}/100
+                        </span>
+                        {assessment.band ? ` · ${assessment.band}` : ""}
+                        {assessment.summary ? ` — ${assessment.summary}` : ""}
+                      </span>
+                    </p>
+                  )}
+
+                  <p className="label mt-2 flex items-center gap-1.5 text-faint">
+                    <Icon glyph={glyphs.time} size="sm" />
+                    <span className="numeric">
+                      {formatClassTime(row.joined_at)}
+                    </span>
+                  </p>
+                </li>
+              );
+            })}
           </ul>
           <p className="mt-6 text-[0.8125rem] leading-relaxed text-faint">
             Self-assessment scores are shown with the member&rsquo;s consent,
@@ -134,9 +150,9 @@ export default async function CoachGroupsPage() {
           <div className="flex items-start gap-4">
             <IconBadge glyph={glyphs.groups} />
             <p className="max-w-md text-[0.9375rem] leading-relaxed text-muted">
-            You don&rsquo;t have any groups yet. An admin creates them and
-            assigns you — one-to-one groups appear here on their own when a
-            member picks you.
+              You don&rsquo;t have any groups yet. An admin creates them and
+              assigns you — one-to-one groups appear here on their own when a
+              member picks you.
             </p>
           </div>
         ) : (
@@ -144,7 +160,10 @@ export default async function CoachGroupsPage() {
             {groups.map((group) => {
               const roster = rosters.get(group.id) ?? [];
               return (
-                <li key={group.id} className="border-t border-line py-8 first:border-t-0">
+                <li
+                  key={group.id}
+                  className="border-t border-line py-8 first:border-t-0"
+                >
                   <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                     <div>
                       <h2 className="display-sm text-[1.375rem] text-ink">
@@ -164,9 +183,12 @@ export default async function CoachGroupsPage() {
 
                   {roster.length > 0 && (
                     <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
-                      {roster.map((member, i) => (
-                        <li key={i} className="text-[0.9375rem] text-muted">
-                          {member.name ?? "Member"}
+                      {roster.map((row) => (
+                        <li
+                          key={row.user_id}
+                          className="text-[0.9375rem] text-muted"
+                        >
+                          {row.profiles?.name ?? "Member"}
                         </li>
                       ))}
                     </ul>
