@@ -130,6 +130,9 @@ export type FitnessClass = {
   // default, so every class written before 0009 is still open to every member.
   audience: ClassAudience;
   status: ClassStatus;
+  // Set when a class was created as part of a repeating routine. Not a foreign
+  // key — there is no parent row, only a shared label (migration 0012).
+  series_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -198,7 +201,8 @@ export interface Database {
         Insert: Insertable<
           FitnessClass,
           "id" | "trainer_name" | "trainer_id" | "duration_minutes" |
-          "is_premium" | "audience" | "status" | "created_at" | "updated_at"
+          "is_premium" | "audience" | "status" | "series_id" |
+          "created_at" | "updated_at"
         >;
         Update: Partial<FitnessClass>;
         Relationships: [];

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { NextClass } from "@/components/classes/NextClassBanner";
 import type { FitnessClass, Profile } from "@/lib/db-types";
+import { formatClassTime } from "@/lib/schedule";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -136,18 +137,11 @@ export function classWindow(
   return "open";
 }
 
-/** "Sat 26 Jul, 7:00 am" in IST — the timezone every member is actually in. */
-export function formatClassTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Kolkata",
-  }).format(new Date(iso));
-}
+// Re-exported so the many server callers keep importing it from here. It
+// lives in lib/schedule now because it is pure IST formatting and the admin's
+// class rows are a client component — importing it from this `server-only`
+// module pulled the whole thing into the browser bundle.
+export { formatClassTime };
 
 /**
  * The soonest class still worth showing a countdown for, shaped for the

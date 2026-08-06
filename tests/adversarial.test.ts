@@ -12,7 +12,7 @@ function makeClass(over: Partial<FitnessClass> = {}): FitnessClass {
     id: "c1", title: "Class", trainer_name: null, trainer_id: null,
     scheduled_at: new Date(Date.now() + 3_600_000).toISOString(),
     duration_minutes: 45, livekit_room: "r", is_premium: true,
-    audience: "all", status: "scheduled",
+    audience: "all", status: "scheduled", series_id: null,
     created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
     ...over,
   };

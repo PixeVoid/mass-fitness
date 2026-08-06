@@ -1,22 +1,29 @@
+import { cancelSeries } from "@/app/actions/admin";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { listAllClasses, listTargetableGroups, listTrainers } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatClassTime } from "@/lib/classes";
+import { groupClassSeries } from "@/lib/classSeries";
 import ClassForm from "./ClassForm";
-import StatusForm from "./StatusForm";
+import ClassRow from "./ClassRow";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminClassesPage() {
+export default async function AdminClassesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cancelled?: string }>;
+}) {
   await requireAdmin();
-  const [classes, trainers, groups] = await Promise.all([
+
+  const [{ cancelled }, classes, trainers, groups] = await Promise.all([
+    searchParams,
     listAllClasses(),
     listTrainers(),
     listTargetableGroups(),
   ]);
 
-  const trainerNames = new Map(
-    trainers.map((trainer) => [trainer.id, trainer.name ?? trainer.phone ?? "—"]),
-  );
+  const layout = groupClassSeries(classes);
 
   return (
     <>
@@ -24,8 +31,18 @@ export default async function AdminClassesPage() {
       <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-muted">
         Scheduling a class is all that is needed — LiveKit creates the room
         itself when the first person joins, so there is nothing to provision on
-        their side.
+        their side. Times are IST.
       </p>
+
+      {cancelled === "series" && (
+        <p
+          role="status"
+          className="mt-6 border-l border-line-strong pl-5 text-[0.9375rem] text-ink"
+        >
+          The remaining sessions in that routine are cancelled. Ones that
+          already ran were left alone.
+        </p>
+      )}
 
       <div className="mt-10">
         <ClassForm trainers={trainers} groups={groups} />
@@ -35,42 +52,85 @@ export default async function AdminClassesPage() {
         <h2 className="label text-faint">Schedule</h2>
 
         {classes.length === 0 ? (
-          <p className="mt-6 text-[0.9375rem] text-muted">
-            No classes yet.
-          </p>
+          <p className="mt-6 text-[0.9375rem] text-muted">No classes yet.</p>
         ) : (
           <ul className="mt-6">
-            {classes.map((item) => (
-              <li
-                key={item.id}
-                className="grid grid-cols-1 items-baseline gap-x-6 gap-y-3 border-t border-line py-5 lg:grid-cols-12"
-              >
-                <div className="lg:col-span-5">
-                  <p className="text-[0.9375rem] text-ink">
-                    {item.title}
-                    {!item.is_premium && (
-                      <span className="label ml-3 text-faint">free</span>
-                    )}
-                  </p>
-                  <p className="mt-1 text-[0.8125rem] text-faint">
-                    {item.trainer_id
-                      ? `with ${trainerNames.get(item.trainer_id) ?? "unknown"}`
-                      : "no trainer assigned"}
-                  </p>
-                </div>
+            {layout.map((entry) => {
+              if (entry.kind === "single") {
+                return (
+                  <ClassRow
+                    key={entry.item.id}
+                    fitnessClass={entry.item}
+                    trainers={trainers}
+                  />
+                );
+              }
 
-                <div className="label flex flex-wrap items-center gap-x-4 gap-y-2 text-faint lg:col-span-4">
-                  <span className="numeric">
-                    {formatClassTime(item.scheduled_at)}
-                  </span>
-                  <span className="numeric">{item.duration_minutes} min</span>
-                </div>
+              const group = entry.series;
+              const first = group.sessions[0];
+              const last = group.sessions[group.sessions.length - 1];
 
-                <div className="lg:col-span-3 lg:justify-self-end">
-                  <StatusForm classId={item.id} status={item.status} />
-                </div>
-              </li>
-            ))}
+              return (
+                <li key={group.id} className="border-t border-line">
+                  {/* <details> rather than state: this is disclosure, not
+                      interactivity, and the browser does it without shipping
+                      a component or losing the open one on navigation. */}
+                  <details className="group">
+                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-x-6 gap-y-2 py-5">
+                      <span>
+                        <span className="text-[0.9375rem] text-ink">
+                          {group.title}
+                        </span>
+                        <span className="pick-badge ml-3">
+                          {group.sessions.length} sessions
+                        </span>
+                      </span>
+
+                      <span className="label flex flex-wrap items-center gap-x-4 gap-y-2 text-faint">
+                        <span className="numeric">
+                          {formatClassTime(first.scheduled_at)}
+                        </span>
+                        <span aria-hidden="true">&rarr;</span>
+                        <span className="numeric">
+                          {formatClassTime(last.scheduled_at)}
+                        </span>
+                        <span className="text-ink group-open:hidden">Show</span>
+                        <span className="hidden text-ink group-open:inline">
+                          Hide
+                        </span>
+                      </span>
+                    </summary>
+
+                    <div className="border-l border-line pb-5 pl-5">
+                      <ul>
+                        {group.sessions.map((session) => (
+                          <ClassRow
+                            key={session.id}
+                            fitnessClass={session}
+                            trainers={trainers}
+                          />
+                        ))}
+                      </ul>
+
+                      {group.upcoming > 0 && (
+                        <div className="mt-5">
+                          <ConfirmSubmit
+                            action={cancelSeries}
+                            fields={{ seriesId: group.id }}
+                            label="Cancel the rest of this routine"
+                            confirmLabel={`Cancel ${group.upcoming} sessions`}
+                            title="Cancel the remaining sessions?"
+                            body={`${group.upcoming} upcoming ${
+                              group.upcoming === 1 ? "session" : "sessions"
+                            } of "${group.title}" will be marked cancelled. Sessions that already ran are left alone, and members will see them marked off.`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireCoach } from "@/lib/auth/dal";
+import { parseIstLocal } from "@/lib/schedule";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,8 +72,11 @@ export async function scheduleOwnClass(
     return { error: "Pick at least one group, or open it to everyone." };
   }
 
-  const scheduledAt = new Date(parsed.data.scheduledAt);
-  if (Number.isNaN(scheduledAt.getTime())) {
+  // Read as IST, not as whatever zone the server happens to run in. `new
+  // Date("2026-08-10T07:00")` parses in the server's zone — UTC in production
+  // — so a 7:00am class was stored as 7:00am UTC and shown as 12:30pm.
+  const scheduledAt = parseIstLocal(parsed.data.scheduledAt);
+  if (!scheduledAt) {
     return { error: "That date didn't parse." };
   }
 
@@ -171,8 +175,8 @@ export async function updateOwnClass(
     return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   }
 
-  const scheduledAt = new Date(parsed.data.scheduledAt);
-  if (Number.isNaN(scheduledAt.getTime())) {
+  const scheduledAt = parseIstLocal(parsed.data.scheduledAt);
+  if (!scheduledAt) {
     return { error: "That date didn't parse." };
   }
 
