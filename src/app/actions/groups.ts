@@ -47,6 +47,20 @@ export async function joinGroup(
 
   const supabase = createAdminClient();
 
+  // One group per member through this path. The picker already redirects
+  // someone who has one, but the action is a public endpoint — without this a
+  // crafted request could put one person in every cohort, taking a place in
+  // each and defeating the point of a cap. Admins can still place a member in
+  // more than one from /admin/groups.
+  const { count: existing } = await supabase
+    .from("group_members")
+    .select("group_id", { count: "exact", head: true })
+    .eq("user_id", profile.id);
+
+  if ((existing ?? 0) > 0) {
+    return { error: "You're already in a group. Message us to switch." };
+  }
+
   const { data: group } = await supabase
     .from("training_groups")
     .select("*")
@@ -130,14 +144,8 @@ export async function pickCoach(
   // Re-checked here rather than trusted from the page that rendered the list:
   // between it loading and this posting, someone else may have taken the last
   // slot with this coach.
-  const { count } = await supabase
-    .from("training_groups")
-    .select("id", { count: "exact", head: true })
-    .eq("trainer_id", coach.id)
-    .eq("kind", "one_to_one")
-    .eq("active", true);
-
-  if ((count ?? 0) >= coach.one_to_one_capacity) {
+  const taken = await countPayingPrivateClients(coach.id);
+  if (taken >= coach.one_to_one_capacity) {
     return { error: "That coach is fully booked. Pick another." };
   }
 
@@ -178,6 +186,47 @@ export async function pickCoach(
   revalidatePath("/dashboard");
   revalidatePath("/coach");
   redirect("/dashboard?notice=coach-assigned");
+}
+
+/**
+ * How many private clients a coach currently has who are still paying.
+ *
+ * Counting every active one-to-one group would count people who lapsed months
+ * ago: nothing deactivates a private group when its member stops paying, so a
+ * coach set to four would silently fill with clients who left and become
+ * unbookable forever. Membership is the thing that makes a slot occupied.
+ */
+async function countPayingPrivateClients(coachId: string): Promise<number> {
+  const supabase = createAdminClient();
+
+  const { data: groups } = await supabase
+    .from("training_groups")
+    .select("id")
+    .eq("trainer_id", coachId)
+    .eq("kind", "one_to_one")
+    .eq("active", true);
+
+  if (!groups || groups.length === 0) return 0;
+
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .in(
+      "group_id",
+      groups.map((group) => group.id),
+    );
+
+  const userIds = [...new Set((members ?? []).map((row) => row.user_id))];
+  if (userIds.length === 0) return 0;
+
+  const { data: live } = await supabase
+    .from("subscriptions")
+    .select("user_id")
+    .in("user_id", userIds)
+    .eq("status", "active")
+    .gt("end_date", new Date().toISOString());
+
+  return new Set((live ?? []).map((row) => row.user_id)).size;
 }
 
 /**

@@ -50,6 +50,16 @@ export type ResultBand = "Beginner" | "Developing" | "Fit" | "Advanced";
 
 export interface AssessmentResult {
   total: number;
+  /**
+   * What each breakdown part is scored out of.
+   *
+   * 25 normally — four parts, 100 points. When the physical-performance
+   * questions are skipped there are three parts covering the same 100, so
+   * both the values and this maximum scale together. Without it the bars were
+   * printed against a fixed "/ 25" and either overflowed it or failed to add
+   * up to the headline score.
+   */
+  partMax: number;
   band: ResultBand;
   bandCopy: string;
   breakdown: ScoreBreakdown;

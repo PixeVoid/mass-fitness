@@ -1,12 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createClass, type ActionState } from "@/app/actions/admin";
 import type { Profile } from "@/lib/db-types";
 
-export default function ClassForm({ trainers }: { trainers: Profile[] }) {
+export interface TargetableGroup {
+  id: string;
+  name: string;
+  kind: "group" | "one_to_one";
+  trainerName: string | null;
+}
+
+export default function ClassForm({
+  trainers,
+  groups,
+}: {
+  trainers: Profile[];
+  groups: TargetableGroup[];
+}) {
   const [state, action] = useActionState<ActionState, FormData>(createClass, {});
+  const [audience, setAudience] = useState<"all" | "groups">("all");
 
   return (
     <form
@@ -93,6 +107,65 @@ export default function ClassForm({ trainers }: { trainers: Profile[] }) {
           Members only
         </label>
       </div>
+
+      <fieldset className="sm:col-span-2 border-t border-line pt-5">
+        <legend className="field-label">Who is it for?</legend>
+        <div className="mt-2 flex flex-wrap gap-x-6 gap-y-3">
+          <label className="flex items-center gap-3 text-[0.9375rem] text-ink">
+            <input
+              type="radio"
+              name="audience"
+              value="all"
+              checked={audience === "all"}
+              onChange={() => setAudience("all")}
+              className="h-4 w-4 accent-[color:var(--ink)]"
+            />
+            Every member
+          </label>
+          <label className="flex items-center gap-3 text-[0.9375rem] text-ink">
+            <input
+              type="radio"
+              name="audience"
+              value="groups"
+              checked={audience === "groups"}
+              onChange={() => setAudience("groups")}
+              disabled={groups.length === 0}
+              className="h-4 w-4 accent-[color:var(--ink)]"
+            />
+            Specific groups
+          </label>
+        </div>
+
+        {/* "Every member" excludes one-to-one members by design — their plan
+            buys private sessions only. To reach one, target their group. */}
+        {audience === "groups" && (
+          <div className="mt-5 flex flex-col gap-3 border-l border-line pl-5">
+            {groups.length === 0 ? (
+              <p className="text-[0.8125rem] leading-relaxed text-faint">
+                No groups yet — create one on the Groups tab.
+              </p>
+            ) : (
+              groups.map((group) => (
+                <label
+                  key={group.id}
+                  className="flex items-center gap-3 text-[0.9375rem] text-muted"
+                >
+                  <input
+                    type="checkbox"
+                    name="groupIds"
+                    value={group.id}
+                    className="h-4 w-4 accent-[color:var(--ink)]"
+                  />
+                  {group.name}
+                  <span className="label text-faint">
+                    {group.kind === "one_to_one" ? "one-to-one" : group.trainerName ?? "no coach"}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+      </fieldset>
 
       <div className="sm:col-span-2">
         <Submit />

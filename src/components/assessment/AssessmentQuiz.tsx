@@ -31,6 +31,7 @@ interface SubmitResult {
   band: string;
   bandCopy: string;
   breakdown: { bmi: number; activity: number; physical: number | null; lifestyle: number };
+  partMax: number;
   tierNudge: "group" | "one_to_one";
   healthFlag: boolean;
   bmi: number;
@@ -638,15 +639,25 @@ function ContactStep({
 // Results
 // ---------------------------------------------------------------------------
 
-function BreakdownBar({ label, value }: { label: string; value: number | null }) {
+function BreakdownBar({
+  label,
+  value,
+  max,
+}: {
+  label: string;
+  value: number | null;
+  max: number;
+}) {
   if (value === null) return null;
-  const pct = Math.max(0, Math.min(100, (value / 25) * 100));
+  const pct = Math.max(0, Math.min(100, (value / max) * 100));
 
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between text-[0.8125rem]">
         <span className="text-muted">{label}</span>
-        <span className="numeric text-faint">{value.toFixed(1)} / 25</span>
+        <span className="numeric text-faint">
+          {value.toFixed(1)} / {max.toFixed(max % 1 === 0 ? 0 : 1)}
+        </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunk">
         <div className="h-full rounded-full bg-ink" style={{ width: `${pct}%` }} />
@@ -675,10 +686,10 @@ function ResultScreen({ name, result }: { name: string; result: SubmitResult }) 
       <p className="mt-1 text-[0.9375rem] text-muted">{result.bandCopy}</p>
 
       <div className="mt-8 flex flex-col gap-4 border-t border-line pt-6">
-        <BreakdownBar label="BMI" value={result.breakdown.bmi} />
-        <BreakdownBar label="Activity" value={result.breakdown.activity} />
-        <BreakdownBar label="Physical performance" value={result.breakdown.physical} />
-        <BreakdownBar label="Lifestyle" value={result.breakdown.lifestyle} />
+        <BreakdownBar label="BMI" value={result.breakdown.bmi} max={result.partMax} />
+        <BreakdownBar label="Activity" value={result.breakdown.activity} max={result.partMax} />
+        <BreakdownBar label="Physical performance" value={result.breakdown.physical} max={result.partMax} />
+        <BreakdownBar label="Lifestyle" value={result.breakdown.lifestyle} max={result.partMax} />
       </div>
 
       <div className="mt-8 rounded-xl bg-surface-sunk p-5">

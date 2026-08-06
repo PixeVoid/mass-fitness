@@ -37,7 +37,10 @@ export async function listMembers(limit = 100): Promise<MemberRow[]> {
     supabase
       .from("subscriptions")
       .select("*")
-      .order("end_date", { ascending: false }),
+      // nullsFirst matters: Postgres sorts NULLs first on DESC, and a pending
+      // checkout has no end_date — so an abandoned payment was outranking the
+      // membership someone is actually on.
+      .order("end_date", { ascending: false, nullsFirst: false }),
   ]);
 
   // Latest-ending subscription wins, so a renewal shadows the row it replaced.
@@ -122,4 +125,35 @@ export async function listLeads(limit = 100): Promise<Lead[]> {
     .limit(limit);
 
   return data ?? [];
+}
+
+export interface TargetableGroup {
+  id: string;
+  name: string;
+  kind: "group" | "one_to_one";
+  trainerName: string | null;
+}
+
+/** Active groups an admin can point a class at, with their coach's name. */
+export async function listTargetableGroups(): Promise<TargetableGroup[]> {
+  const supabase = await createClient();
+
+  const [{ data: groups }, { data: trainers }] = await Promise.all([
+    supabase
+      .from("training_groups")
+      .select("id, name, kind, trainer_id")
+      .eq("active", true)
+      .order("kind", { ascending: true })
+      .order("name", { ascending: true }),
+    supabase.from("profiles").select("id, name").in("role", ["trainer", "admin"]),
+  ]);
+
+  const names = new Map((trainers ?? []).map((t) => [t.id, t.name]));
+
+  return (groups ?? []).map((group) => ({
+    id: group.id,
+    name: group.name,
+    kind: group.kind,
+    trainerName: group.trainer_id ? (names.get(group.trainer_id) ?? null) : null,
+  }));
 }

@@ -12,10 +12,14 @@ export default function robots(): MetadataRoute.Robots {
         "/live",
         "/api",
         "/admin",
+        "/coach",
         "/login",
         "/onboarding",
         "/auth/callback",
-        "/subscribe/callback",
+        // Checkout and the group picker are behind auth and carry noindex; the
+        // previous entry here was "/subscribe/callback", a route that has never
+        // existed — the return page is /subscribe/return.
+        "/subscribe",
       ],
     },
     sitemap: `${siteUrl}/sitemap.xml`,

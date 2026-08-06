@@ -42,13 +42,19 @@ export default function NextClassBanner({
   nextClass: NextClass;
   serverNowMs: number;
 }) {
-  // Measured as elapsed-since-mount rather than read from Date.now() directly:
-  // a device whose clock is a day out would otherwise show a wildly wrong
-  // countdown, where this only relies on it to tick forwards at one second per
-  // second — which even a badly set clock does.
-  const [elapsedMs, setElapsedMs] = useState(0);
+  // Two clocks, and the better one wins.
+  //
+  // The device's own clock is the accurate one *if* it is set correctly — it
+  // includes the time the page spent in transit, which a server timestamp
+  // cannot. So it is used whenever it agrees with the server to within a
+  // minute. When it does not (a phone set to the wrong day), fall back to
+  // counting forward from the server's reading, which only asks the device to
+  // tick at one second per second — something even a badly set clock does.
+  const [tick, setTick] = useState(() => Date.now());
+  const [mountedAt] = useState(() => Date.now());
 
-  const now = serverNowMs + elapsedMs;
+  const deviceIsSane = Math.abs(serverNowMs - mountedAt) < 60_000;
+  const now = deviceIsSane ? tick : serverNowMs + (tick - mountedAt);
   const isOpen = now >= nextClass.opensAtMs && now < nextClass.closesAtMs;
   const msUntilOpen = nextClass.opensAtMs - now;
 
@@ -56,11 +62,7 @@ export default function NextClassBanner({
     // Nothing left to count once the door is open.
     if (isOpen) return;
 
-    const mountedAt = Date.now();
-    const id = setInterval(() => {
-      setElapsedMs(Date.now() - mountedAt);
-    }, 1000);
-
+    const id = setInterval(() => setTick(Date.now()), 1000);
     return () => clearInterval(id);
   }, [isOpen]);
 

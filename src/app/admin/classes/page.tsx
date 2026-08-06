@@ -1,4 +1,4 @@
-import { listAllClasses, listTrainers } from "@/lib/admin/queries";
+import { listAllClasses, listTargetableGroups, listTrainers } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatClassTime } from "@/lib/classes";
 import ClassForm from "./ClassForm";
@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminClassesPage() {
   await requireAdmin();
-  const [classes, trainers] = await Promise.all([
+  const [classes, trainers, groups] = await Promise.all([
     listAllClasses(),
     listTrainers(),
+    listTargetableGroups(),
   ]);
 
   const trainerNames = new Map(
@@ -27,7 +28,7 @@ export default async function AdminClassesPage() {
       </p>
 
       <div className="mt-10">
-        <ClassForm trainers={trainers} />
+        <ClassForm trainers={trainers} groups={groups} />
       </div>
 
       <section className="mt-14">

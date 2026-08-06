@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/auth/dal";
-import { getRecentJoins } from "@/lib/groups";
+import { getAssessmentsForMembers, getRecentJoins } from "@/lib/groups";
 import { formatClassTime } from "@/lib/classes";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -31,6 +31,12 @@ export default async function CoachGroupsPage() {
       .order("name", { ascending: true }),
     getRecentJoins(coach.id),
   ]);
+
+  // Shown here as well as emailed. Coaches were told to go and find a message
+  // from days ago, which is not where anyone looks before a session.
+  const assessments = await getAssessmentsForMembers(
+    recentJoins.map((member) => member.email),
+  );
 
   const rosters = new Map<string, { name: string | null; joinedAt: string }[]>();
   if (groups && groups.length > 0) {
@@ -83,6 +89,23 @@ export default async function CoachGroupsPage() {
                     Training for: {member.fitnessGoal}
                   </p>
                 )}
+
+                {(() => {
+                  const assessment = member.email
+                    ? assessments.get(member.email.toLowerCase())
+                    : undefined;
+                  if (!assessment) return null;
+                  return (
+                    <p className="mt-2 text-[0.9375rem] text-muted">
+                      <span className="numeric text-ink">
+                        {assessment.score ?? "—"}/100
+                      </span>
+                      {assessment.band ? ` · ${assessment.band}` : ""}
+                      {assessment.summary ? ` — ${assessment.summary}` : ""}
+                    </p>
+                  );
+                })()}
+
                 <p className="label mt-2 text-faint">
                   <span className="numeric">
                     {formatClassTime(member.joinedAt)}
@@ -92,9 +115,9 @@ export default async function CoachGroupsPage() {
             ))}
           </ul>
           <p className="mt-6 text-[0.8125rem] leading-relaxed text-faint">
-            Their self-assessment results were included in the email we sent
-            you. Treat them as confidential — it is health information about
-            someone you are about to coach.
+            Self-assessment scores are shown with the member&rsquo;s consent,
+            given when they took the quiz. Treat them as confidential — this is
+            health information about someone you are about to coach.
           </p>
         </section>
       )}

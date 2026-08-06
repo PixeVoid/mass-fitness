@@ -1,4 +1,5 @@
 import { buildClassReminderEmail } from "@/lib/classes/reminderEmail";
+import { canAccessClass } from "@/lib/classAccess";
 import { classJoinWindow, formatClassTime } from "@/lib/classes";
 import { sendEmail } from "@/lib/email/resend";
 import { publicEnv, serverEnv } from "@/lib/env";
@@ -76,11 +77,19 @@ async function handle(request: Request) {
   // a class list is short.
   const { data: subscriptions } = await supabase
     .from("subscriptions")
-    .select("user_id")
+    .select("user_id, plan_tier, end_date")
     .eq("status", "active")
-    .gt("end_date", new Date(now).toISOString());
+    .gt("end_date", new Date(now).toISOString())
+    .order("end_date", { ascending: false });
 
-  const memberIds = [...new Set((subscriptions ?? []).map((s) => s.user_id))];
+  // Tier decides which classes reach them, so keep the longest-running
+  // subscription per person rather than an arbitrary one.
+  const tierByUser = new Map<string, "group" | "one_to_one">();
+  for (const row of subscriptions ?? []) {
+    if (!tierByUser.has(row.user_id)) tierByUser.set(row.user_id, row.plan_tier);
+  }
+
+  const memberIds = [...tierByUser.keys()];
   if (memberIds.length === 0) {
     return Response.json({ classes: classes.length, sent: 0 });
   }
@@ -143,20 +152,19 @@ async function handle(request: Request) {
     const formattedTime = formatClassTime(fitnessClass.scheduled_at);
     const joinUrl = `${publicEnv.siteUrl}/live/${fitnessClass.id}`;
 
-    // A class marked 'groups' with no targets reaches nobody, which mirrors
-    // what the join check does with the same row.
-    const classTargetIds = targetsByClass.get(fitnessClass.id);
-    const audienceForClass =
-      fitnessClass.audience === "all"
-        ? recipients
-        : recipients.filter((profile) => {
-            const mine = groupsByUser.get(profile.id);
-            if (!mine || !classTargetIds) return false;
-            for (const groupId of classTargetIds) {
-              if (mine.has(groupId)) return true;
-            }
-            return false;
-          });
+    // Same predicate the room and the dashboard use, so a reminder can never
+    // point at a session the door will refuse.
+    const classTargetIds = [...(targetsByClass.get(fitnessClass.id) ?? [])];
+    const audienceForClass = recipients.filter((profile) =>
+      canAccessClass({
+        audience: fitnessClass.audience,
+        isPremium: fitnessClass.is_premium,
+        isHost: false,
+        planTier: tierByUser.get(profile.id) ?? null,
+        memberGroupIds: [...(groupsByUser.get(profile.id) ?? [])],
+        classGroupIds: classTargetIds,
+      }),
+    );
 
     for (const profile of audienceForClass) {
       // The claim, not a log. Whoever inserts the row owns the send; a

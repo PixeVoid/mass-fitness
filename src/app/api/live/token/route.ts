@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
 import { getClassById } from "@/lib/classes";
-import { memberMayJoinClass } from "@/lib/groups";
+import { decideJoin } from "@/lib/groups";
 import { getVideoProvider } from "@/lib/video/livekit";
 
 /**
@@ -73,28 +73,24 @@ export async function POST(request: Request) {
   // override, so a stand-in coach is a data change, not a code change.
   const isHost = isAdmin || (!!profile && fitnessClass.trainer_id === user.id);
 
-  // The gate. Hosts skip it — a trainer should not be locked out of the class
-  // they are running because their own membership lapsed.
-  if (fitnessClass.is_premium && !isHost) {
-    // Checks status = 'active' *and* end_date in the future; an expired row
-    // that was never swept still fails here.
-    const subscription = await getActiveSubscription();
-    if (!subscription) {
-      return json(
-        { error: "subscription_required", redirectTo: "/subscribe" },
-        403,
-      );
-    }
+  // The gate, in one decision. It used to sit inside `if (is_premium)`, which
+  // meant a free class targeted at one cohort admitted anybody signed in — and
+  // it read nothing about plan tier, so a one-to-one membership silently
+  // included every group class. `decideClassAccess` is now the only rule, and
+  // the dashboard and the reminder job call the same one.
+  const subscription = isHost ? null : await getActiveSubscription();
+  const decision = await decideJoin(
+    fitnessClass,
+    user.id,
+    subscription?.plan_tier ?? null,
+    isHost,
+  );
 
-    // Paying is necessary but no longer sufficient: a class aimed at specific
-    // groups admits only their members. Hosts are past this block entirely —
-    // a coach runs whatever they are assigned to.
-    if (!(await memberMayJoinClass(fitnessClass, user.id))) {
-      return json(
-        { error: "not_in_group", redirectTo: "/dashboard" },
-        403,
-      );
-    }
+  if (decision === "subscription_required") {
+    return json({ error: "subscription_required", redirectTo: "/subscribe" }, 403);
+  }
+  if (decision === "not_in_group") {
+    return json({ error: "not_in_group", redirectTo: "/dashboard" }, 403);
   }
 
   const provider = getVideoProvider();

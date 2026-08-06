@@ -35,6 +35,9 @@ const NOTICES: Record<string, string> = {
   "coach-assigned": "Your coach has been told. They'll be in touch to agree your times.",
 };
 
+/** How many upcoming sessions the dashboard lists. */
+const DASHBOARD_CLASS_LIMIT = 8;
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -45,7 +48,10 @@ export default async function DashboardPage({
   // read instead of queueing behind it — this page used to run profile, then
   // subscription, then plan as three separate round trips, and the wait was
   // the sum of all of them.
-  const classesPromise = getUpcomingClasses();
+  // Deliberately wider than the eight shown. The cap is applied after
+  // filtering by group — taking the soonest eight first meant a member whose
+  // group's next session was ninth globally saw an empty schedule.
+  const classesPromise = getUpcomingClasses(60);
   const cataloguePromise = getPricingCatalogue();
   const noticeParam = searchParams.then((params) => params.notice);
 
@@ -77,8 +83,12 @@ export default async function DashboardPage({
   const groupIds = isStaff ? [] : await getMyGroupIds(profile.id);
   const myGroups = isStaff ? [] : await getMyGroups(profile.id);
   const visibleClasses = isStaff
-    ? classes
-    : await filterClassesForMember(classes, groupIds);
+    ? classes.slice(0, DASHBOARD_CLASS_LIMIT)
+    : await filterClassesForMember(
+        classes,
+        { groupIds, planTier: subscription?.plan_tier ?? null },
+        DASHBOARD_CLASS_LIMIT,
+      );
 
   const awaitingGroup = needsGroup(profile, Boolean(subscription), groupIds.length);
 

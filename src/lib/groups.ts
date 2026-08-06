@@ -1,7 +1,8 @@
 import "server-only";
 
 import { cache } from "react";
-import type { FitnessClass, Profile, TrainingGroup } from "@/lib/db-types";
+import { canAccessClass, decideClassAccess, type JoinDecision } from "@/lib/classAccess";
+import type { FitnessClass, PlanTier, Profile, TrainingGroup } from "@/lib/db-types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,66 +47,96 @@ export const getMyGroups = cache(async (userId: string): Promise<TrainingGroup[]
 });
 
 /**
- * The classes a member should actually see.
+ * Which of these classes belong to this member, newest first, capped.
  *
- * Filtering happens here rather than in RLS because `classes: public read` has
- * to stay open — the marketing site lists the schedule to logged-out visitors.
- * The gate that matters is in the token route; this is what stops a dashboard
- * advertising sessions someone cannot attend, which reads as a paywall inside
- * the thing they already paid for.
+ * The cap is applied *after* filtering, which is the whole reason this takes a
+ * limit rather than the caller slicing the result. Fetching the soonest eight
+ * and then filtering meant a member whose group's next session was ninth in
+ * the global schedule saw an empty dashboard — with several groups running,
+ * routinely.
+ *
+ * Filtering happens here rather than in RLS because `classes: public read`
+ * has to stay open: the marketing site lists the schedule to logged-out
+ * visitors. The gate that matters is in the token route, and both call the
+ * same `decideClassAccess`.
  */
 export async function filterClassesForMember(
   classes: FitnessClass[],
-  groupIds: string[],
+  access: { groupIds: readonly string[]; planTier: PlanTier | null },
+  limit?: number,
 ): Promise<FitnessClass[]> {
-  const targeted = classes.filter((item) => item.audience === "groups");
-  if (targeted.length === 0) return classes;
+  const targetsByClass = await loadClassTargets(
+    classes.filter((item) => item.audience === "groups").map((item) => item.id),
+  );
+
+  const visible = classes.filter((item) =>
+    canAccessClass({
+      audience: item.audience,
+      isPremium: item.is_premium,
+      isHost: false,
+      planTier: access.planTier,
+      memberGroupIds: access.groupIds,
+      classGroupIds: [...(targetsByClass.get(item.id) ?? [])],
+    }),
+  );
+
+  return typeof limit === "number" ? visible.slice(0, limit) : visible;
+}
+
+/** class_id → the groups it targets. Untargeted classes are simply absent. */
+async function loadClassTargets(
+  classIds: string[],
+): Promise<Map<string, Set<string>>> {
+  const byClass = new Map<string, Set<string>>();
+  if (classIds.length === 0) return byClass;
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("class_groups")
     .select("class_id, group_id")
-    .in(
-      "class_id",
-      targeted.map((item) => item.id),
-    );
+    .in("class_id", classIds);
 
-  const allowed = new Set(
-    (data ?? [])
-      .filter((row) => groupIds.includes(row.group_id))
-      .map((row) => row.class_id),
-  );
+  for (const row of data ?? []) {
+    const set = byClass.get(row.class_id) ?? new Set<string>();
+    set.add(row.group_id);
+    byClass.set(row.class_id, set);
+  }
 
-  return classes.filter(
-    (item) => item.audience === "all" || allowed.has(item.id),
-  );
+  return byClass;
 }
 
 /**
- * Whether this member may join one specific class.
+ * Whether this member may join one specific class, and why not if not.
  *
  * Called by the token route, so it is an access decision and not a display
- * one. Reads with the service role because a member cannot see another
- * group's targeting rows — and the answer must not depend on what they happen
- * to be allowed to read.
+ * one. Reads the targeting with the service role because a member cannot see
+ * another group's rows — and the answer must not depend on what they happen to
+ * be allowed to read.
  */
-export async function memberMayJoinClass(
-  fitnessClass: Pick<FitnessClass, "id" | "audience">,
+export async function decideJoin(
+  fitnessClass: Pick<FitnessClass, "id" | "audience" | "is_premium">,
   userId: string,
-): Promise<boolean> {
-  if (fitnessClass.audience === "all") return true;
+  planTier: PlanTier | null,
+  isHost: boolean,
+): Promise<JoinDecision> {
+  if (isHost) return "ok";
 
   const supabase = createAdminClient();
   const [{ data: targets }, { data: memberships }] = await Promise.all([
-    supabase.from("class_groups").select("group_id").eq("class_id", fitnessClass.id),
+    fitnessClass.audience === "groups"
+      ? supabase.from("class_groups").select("group_id").eq("class_id", fitnessClass.id)
+      : Promise.resolve({ data: [] as { group_id: string }[] }),
     supabase.from("group_members").select("group_id").eq("user_id", userId),
   ]);
 
-  // A class marked 'groups' but targeting nothing admits nobody. That is the
-  // safe reading of a half-finished class, and the coach UI refuses to create
-  // one — but the check should not depend on the UI having held.
-  const mine = new Set((memberships ?? []).map((row) => row.group_id));
-  return (targets ?? []).some((row) => mine.has(row.group_id));
+  return decideClassAccess({
+    audience: fitnessClass.audience,
+    isPremium: fitnessClass.is_premium,
+    isHost: false,
+    planTier,
+    memberGroupIds: (memberships ?? []).map((row) => row.group_id),
+    classGroupIds: (targets ?? []).map((row) => row.group_id),
+  });
 }
 
 /** Groups a member could still join, with their remaining space. */
@@ -183,16 +214,42 @@ export async function getAvailableCoaches(): Promise<AvailableCoach[]> {
 
   if (!coaches || coaches.length === 0) return [];
 
+  // Only clients who are still paying occupy a slot. Nothing deactivates a
+  // private group when its member lapses, so counting every active one would
+  // fill a coach permanently with people who left.
   const { data: privateGroups } = await supabase
     .from("training_groups")
-    .select("trainer_id")
+    .select("id, trainer_id")
     .eq("kind", "one_to_one")
     .eq("active", true);
 
   const load = new Map<string, number>();
-  for (const row of privateGroups ?? []) {
-    if (row.trainer_id) {
-      load.set(row.trainer_id, (load.get(row.trainer_id) ?? 0) + 1);
+
+  if (privateGroups && privateGroups.length > 0) {
+    const [{ data: members }, { data: live }] = await Promise.all([
+      supabase
+        .from("group_members")
+        .select("group_id, user_id")
+        .in(
+          "group_id",
+          privateGroups.map((group) => group.id),
+        ),
+      supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("status", "active")
+        .gt("end_date", new Date().toISOString()),
+    ]);
+
+    const paying = new Set((live ?? []).map((row) => row.user_id));
+    const trainerByGroup = new Map(
+      privateGroups.map((group) => [group.id, group.trainer_id]),
+    );
+
+    for (const row of members ?? []) {
+      if (!paying.has(row.user_id)) continue;
+      const trainerId = trainerByGroup.get(row.group_id);
+      if (trainerId) load.set(trainerId, (load.get(trainerId) ?? 0) + 1);
     }
   }
 
@@ -272,19 +329,38 @@ export async function getRecentJoins(coachId: string): Promise<NewMember[]> {
  * and it is why the assessment form and the privacy policy both say so before
  * anyone fills it in. Consent for this is given at the quiz, not assumed here.
  */
-export async function getAssessmentForMember(email: string | null) {
-  if (!email) return null;
+export async function getAssessmentsForMembers(
+  emails: (string | null)[],
+): Promise<Map<string, { score: number | null; band: string | null; summary: string | null }>> {
+  const wanted = [...new Set(emails.filter((e): e is string => Boolean(e)))].map(
+    (email) => email.toLowerCase(),
+  );
+
+  const found = new Map<
+    string,
+    { score: number | null; band: string | null; summary: string | null }
+  >();
+  if (wanted.length === 0) return found;
 
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("leads")
-    .select("*")
-    .eq("email", email.toLowerCase())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select("email, score, band, summary, created_at")
+    .in("email", wanted)
+    .order("created_at", { ascending: false });
 
-  return data ?? null;
+  // Newest first, so the first row per address wins — someone who retook the
+  // quiz should be read on their latest answers.
+  for (const row of data ?? []) {
+    if (!row.email || found.has(row.email)) continue;
+    found.set(row.email, {
+      score: row.score,
+      band: row.band,
+      summary: row.summary,
+    });
+  }
+
+  return found;
 }
 
 /** A paying member with no group has nothing on their dashboard — chase them. */

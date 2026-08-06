@@ -8,7 +8,7 @@
 
 ## Status at a glance
 
-Last updated: 2026-08-06. Update this table in the same commit as the work it describes.
+Last updated: 2026-08-06 (post-review). Update this table in the same commit as the work it describes.
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -37,7 +37,7 @@ The project is on **Next.js 16**, which is not the Next.js most training data de
 
 None of it is code — all of it is account setup, and nothing below can be done from a dev session.
 
-1. **Create the Supabase project**, then run every file in `supabase/migrations/` against it in filename order — `0001_init` … `0009_training_groups` (SQL editor or `supabase db push`).
+1. **Create the Supabase project**, then run every file in `supabase/migrations/` against it in filename order — `0001_init` … `0010_rate_limits` (SQL editor or `supabase db push`).
 2. **Enable Email auth** in Supabase → Authentication → Providers (on by default on new projects, but confirm). No SMS/WhatsApp provider needed — see Section 0.3.
 3. **Create a Google OAuth client** and wire it into Supabase → Authentication → Providers → Google. Also see Section 0.3.
 4. **Create a LiveKit Cloud project** for the URL, key and secret.
@@ -46,9 +46,10 @@ None of it is code — all of it is account setup, and nothing below can be done
 7. **Enable pg_cron** (Database → Extensions) so `expire_subscriptions()` and `prune_chat_logs()` run on a schedule. `0006_maintenance.sql` applies without it, but then both need running by hand.
 8. **Confirm "linked accounts" is on** so an email signup and a later Google sign-in with the same address are one account, not two.
 9. Copy `.env.example` → `.env.local` and fill it in, including `NEXT_PUBLIC_SITE_URL`. Same values go into Vercel's env settings for deploys. `PAYMENT_PROVIDER=mock` until PhonePe credentials exist.
-10. **Set `CRON_SECRET`** and point a scheduler at `/api/cron/class-reminders` every 5 minutes, with `Authorization: Bearer $CRON_SECRET`. Vercel Cron sends it automatically but only allows daily runs on Hobby; pg_cron + pg_net from Supabase works on any tier. Without this, class reminder emails never send — the route refuses to run unauthenticated.
-11. **Create at least one training group** at `/admin/groups` before anyone subscribes, and set a one-to-one capacity for any coach who should take private clients. A member who pays with no group available lands on a page telling them to message you — recoverable, but not the first impression you want.
-12. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
+10. **Run migration `0010_rate_limits.sql`** — the self-assessment's rate limiting moved from process memory to Postgres, and the endpoint counts against a table that has to exist.
+11. **Set `CRON_SECRET`** and point a scheduler at `/api/cron/class-reminders` every 5 minutes, with `Authorization: Bearer $CRON_SECRET`. Vercel Cron sends it automatically but only allows daily runs on Hobby; pg_cron + pg_net from Supabase works on any tier. Without this, class reminder emails never send — the route refuses to run unauthenticated.
+12. **Create at least one training group** at `/admin/groups` before anyone subscribes, and set a one-to-one capacity for any coach who should take private clients. A member who pays with no group available lands on a page telling them to message you — recoverable, but not the first impression you want.
+13. **Make yourself an admin**, once — the only step that still needs raw SQL, because the thing that grants admin is the admin panel:
    ```sql
    update public.profiles set role = 'admin' where email = 'you@example.com';
    ```

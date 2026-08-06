@@ -77,6 +77,12 @@ export type ClassGroup = {
   group_id: string;
 }
 
+export type RateLimitBucket = {
+  bucket: string;
+  count: number;
+  expires_at: string;
+}
+
 export type ClassReminder = {
   class_id: string;
   user_id: string;
@@ -239,6 +245,12 @@ export interface Database {
         Update: Partial<ClassGroup>;
         Relationships: [];
       };
+      rate_limits: {
+        Row: RateLimitBucket;
+        Insert: Insertable<RateLimitBucket, "count">;
+        Update: Partial<RateLimitBucket>;
+        Relationships: [];
+      };
       class_reminders: {
         Row: ClassReminder;
         Insert: Insertable<ClassReminder, "kind" | "sent_at">;
@@ -281,6 +293,14 @@ export interface Database {
       is_admin: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      is_coach: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      bump_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_sec: number };
+        Returns: { allowed: boolean; retry_after: number }[];
       };
     };
     Enums: { [_ in never]: never };

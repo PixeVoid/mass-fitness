@@ -167,6 +167,11 @@ export async function cancelMembership(
 // ---------------------------------------------------------------------------
 
 const classSchema = z.object({
+  // Mirrors the coach form. Without this every admin-created class was open to
+  // every member — including one-to-one members, who are not meant to have
+  // group sessions at all.
+  audience: z.enum(["all", "groups"]).default("all"),
+  groupIds: z.array(z.string().uuid()).default([]),
   title: z.string().trim().min(2, "Give the class a title.").max(120),
   trainerId: z.string().uuid().optional().or(z.literal("")),
   // datetime-local submits "2026-07-26T07:00" with no timezone. The browser
@@ -188,9 +193,15 @@ export async function createClass(
     scheduledAt: formData.get("scheduledAt"),
     durationMinutes: formData.get("durationMinutes"),
     isPremium: formData.get("isPremium") ?? "",
+    audience: formData.get("audience") ?? "all",
+    groupIds: formData.getAll("groupIds").map(String),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  if (parsed.data.audience === "groups" && parsed.data.groupIds.length === 0) {
+    return { error: "Pick at least one group, or open it to everyone." };
   }
 
   const scheduledAt = new Date(parsed.data.scheduledAt);
@@ -199,20 +210,40 @@ export async function createClass(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("classes").insert({
+  const { data: created, error } = await supabase.from("classes").insert({
     title: parsed.data.title,
     trainer_id: parsed.data.trainerId || null,
     scheduled_at: scheduledAt.toISOString(),
     duration_minutes: parsed.data.durationMinutes,
     is_premium: parsed.data.isPremium === "on",
+    audience: parsed.data.audience,
     // Unique per class. LiveKit creates the room implicitly on first join, so
     // there is nothing to provision on their side — the name just has to not
     // collide, and the unique constraint enforces that.
     livekit_room: `class-${crypto.randomUUID()}`,
-  });
+  })
+  .select("id")
+  .single();
 
-  if (error) {
+  if (error || !created) {
     return { error: "Couldn't create the class." };
+  }
+
+  if (parsed.data.audience === "groups") {
+    const { error: targetError } = await supabase.from("class_groups").insert(
+      parsed.data.groupIds.map((groupId) => ({
+        class_id: created.id,
+        group_id: groupId,
+      })),
+    );
+
+    if (targetError) {
+      // Delete rather than leave a class marked "groups" with no audience: it
+      // would sit on the schedule looking booked and reach nobody.
+      await supabase.from("classes").delete().eq("id", created.id);
+      console.error("[admin] could not target class", targetError);
+      return { error: "Couldn't set the groups for that class." };
+    }
   }
 
   revalidatePath("/admin/classes");

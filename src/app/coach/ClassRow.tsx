@@ -61,23 +61,27 @@ export default function ClassRow({
           )}
 
           {!settled && classWindow !== "ended" && (
-            <>
-              <button
-                type="button"
-                onClick={() => setEditing((v) => !v)}
-                className="btn btn-outline"
-              >
-                {editing ? "Close" : "Edit"}
-              </button>
-              <StatusButton
-                classId={fitnessClass.id}
-                to="cancelled"
-                label="Cancel"
-              />
-            </>
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              className="btn btn-outline"
+            >
+              {editing ? "Close" : "Edit"}
+            </button>
           )}
 
-          {classWindow === "open" && fitnessClass.status === "live" && (
+          {/* Cancelling belongs to a session that has not started. Once the
+              door is open, people may already be in the room — the honest
+              action then is to end it, not to call it off. */}
+          {!settled && classWindow === "upcoming" && (
+            <StatusButton
+              classId={fitnessClass.id}
+              to="cancelled"
+              label="Cancel"
+            />
+          )}
+
+          {!settled && classWindow === "open" && (
             <StatusButton
               classId={fitnessClass.id}
               to="ended"
