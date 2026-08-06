@@ -49,7 +49,7 @@ export default async function SeoLandingPage({
     <>
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-3xl px-5 pb-24 sm:px-8 sm:pb-32">
+      <main id="main" className="mx-auto w-full max-w-3xl px-5 pb-24 sm:px-8 sm:pb-32">
         <HeaderSpacer />
 
         <p className="label text-faint">{eyebrow}</p>

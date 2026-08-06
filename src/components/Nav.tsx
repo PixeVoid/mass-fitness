@@ -12,7 +12,7 @@ const LINKS = [
   // Home first. Off the landing page the section links go somewhere the
   // visitor has not been, and there was no link that simply meant "back to
   // the start" other than the wordmark, which not everyone reads as a button.
-  { href: "/#top", label: "Home" },
+  { href: "/", label: "Home" },
   { href: "/#features", label: "Features" },
   { href: "/#classes", label: "Classes" },
   { href: "/#how-it-works", label: "How it works" },
@@ -100,17 +100,17 @@ export default function Nav({
 
   const go = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
-    if (!href.startsWith("/#")) return;
-    const slug = href.slice(2);
 
-    // "Home" means the top of the page, not the top of <main> — scrolling an
-    // element into view leaves the hero's first rows above the fold.
-    if (slug === "top") {
-      if (window.location.pathname !== "/") return;
-      e.preventDefault();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    // "Home" is the route, not a fragment. On the landing page a Link to "/"
+    // is a no-op — nothing about the URL changes — so it scrolls instead, the
+    // same behaviour the wordmark has.
+    if (href === "/") {
+      goHome(e);
       return;
     }
+
+    if (!href.startsWith("/#")) return;
+    const slug = href.slice(2);
 
     // Off the landing page there is nothing to scroll to, so every one of
     // these has to fall through to real navigation. Each branch below only
@@ -170,7 +170,7 @@ export default function Nav({
           // Home carries the marker when no section does — at the top of the
           // landing page, which is exactly where "Home" means you are.
           const isActive =
-            link.href === "/#top" ? isHome && active === "" : active === link.href;
+            link.href === "/" ? isHome && active === "" : active === link.href;
           return (
             <Link
               key={link.href}
@@ -202,7 +202,9 @@ export default function Nav({
           aria-current={onAccount ? "page" : undefined}
           title={identity ? `${identity.firstName} — your dashboard` : undefined}
           className={`block rounded-full px-4 py-2 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:px-5 sm:py-2.5 ${
-            onAccount ? "nav-pill-active" : "bg-inverse-bg text-inverse-fg"
+            onAccount
+              ? "nav-pill-active nav-pill-glow"
+              : "bg-inverse-bg text-inverse-fg nav-pill-glow"
           }`}
         >
           {/* The clamp lives on an inner span: the active ring is drawn just

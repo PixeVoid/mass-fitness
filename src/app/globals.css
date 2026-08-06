@@ -16,9 +16,15 @@
   --paper: #f7f6f4; /* page background — warm off-white */
   --surface: #ffffff; /* raised panel */
   --surface-sunk: #f0efec; /* inset well, image placeholder */
-  --ink: #121212; /* primary text */
-  --muted: #6b6b6b; /* secondary text */
-  --faint: #9a9a9a; /* tertiary text, labels */
+  --ink: #121212; /* primary text — 17.4:1 on paper */
+  /* The two quiet greys were set by eye and both were too light to read.
+     `--faint` was #9a9a9a: 2.6:1 against this paper, less than half what WCAG
+     AA asks for, on 175 usages that include class times, capacity counts and
+     "no trainer assigned" — information, not decoration. Both are now the
+     lightest value that still passes, so the hierarchy is intact and the
+     bottom of it is legible. */
+  --muted: #5e5e5e; /* secondary text — 6.0:1 */
+  --faint: #717171; /* tertiary text, labels — 4.5:1 */
   --line: rgba(18, 18, 18, 0.1); /* hairline */
   --line-strong: rgba(18, 18, 18, 0.24); /* hairline, emphasised */
   --overlay: rgba(18, 18, 18, 0.04); /* hover wash */
@@ -57,8 +63,8 @@
     --surface: #161616;
     --surface-sunk: #1c1c1c;
     --ink: #f2f1ee;
-    --muted: #9a9a9a;
-    --faint: #6c6c6c;
+    --muted: #9a9a9a; /* 6.9:1 on this paper — already passing */
+    --faint: #7b7b7b; /* was #6c6c6c, 3.7:1 — under AA */
     --line: rgba(255, 255, 255, 0.11);
     --line-strong: rgba(255, 255, 255, 0.26);
     --overlay: rgba(255, 255, 255, 0.05);
@@ -85,7 +91,7 @@
   --surface-sunk: #1c1c1c;
   --ink: #f2f1ee;
   --muted: #9a9a9a;
-  --faint: #6c6c6c;
+  --faint: #7b7b7b;
   --line: rgba(255, 255, 255, 0.11);
   --line-strong: rgba(255, 255, 255, 0.26);
   --overlay: rgba(255, 255, 255, 0.05);
@@ -477,6 +483,28 @@ body {
     }
   }
 
+  /* --- Skip link ---------------------------------------------------------
+     Off-screen rather than `display: none`: a hidden element is not focusable,
+     so hiding it that way would remove the only thing it exists to do.     */
+
+  .skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    border-radius: 999px;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    transition: transform 0.2s var(--ease);
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+
   .pick-badge {
     display: inline-flex;
     align-items: center;
@@ -492,22 +520,24 @@ body {
     white-space: nowrap;
   }
 
-  /* --- Active nav pill --------------------------------------------------
-     The header's "you are here" marker. It used to be a flat inverse fill,
-     which on a monochrome site made an active section look identical to a
-     solid button — the highlight read as an affordance rather than as state.
-     It now carries a thin ring drawn from the same conic gradient as .btn-ai,
-     sharing the gradient so that "this is the live one" is a single idea
-     across the site. It was originally dialled back to 0.5 opacity over a
-     1.5px band, which on the small account pill disappeared into the dark
-     header entirely — a highlight nobody can see is not a highlight. Now full
-     opacity over a 2px band, with a soft outer bloom so it reads at a glance
-     against both papers. It still turns at half the AI CTA's speed, which is
-     what keeps it from competing.
+  /* --- Active pill ------------------------------------------------------
+     Two strengths, and the distinction matters because this treatment was
+     applied to everything and stopped meaning anything.
+
+     `.nav-pill-active` is the plain one: an inverse fill, no gradient. It is
+     what an admin tab or any other "you are here" marker gets — those are
+     ordinary state, and a glowing animated ring around the word "Overview"
+     reads as an alert.
+
+     `.nav-pill-glow` adds the conic ring, and is deliberately rare: the
+     account pill only. That pill carries a person's first name and nothing
+     else says it opens their dashboard, so it earns the one treatment on the
+     site that draws the eye on its own. It shares the gradient with the AI
+     CTA, which keeps "this is the live one" a single idea, and turns at half
+     the speed so it never competes with it.
 
      The ring is a masked pseudo-element rather than a border, because a
-     gradient cannot paint a border directly — border-box background-clip is
-     the alternative, and it forces the fill to be a gradient too.          */
+     gradient cannot paint a border directly.                              */
 
   .nav-pill-active {
     position: relative;
@@ -515,7 +545,14 @@ body {
     color: var(--inverse-fg);
   }
 
-  .nav-pill-active::before {
+  /* Its own positioning context, so the ring works on a pill that is not also
+     `.nav-pill-active` — the account pill glows on every page, not only the
+     one it points at. */
+  .nav-pill-glow {
+    position: relative;
+  }
+
+  .nav-pill-glow::before {
     content: "";
     position: absolute;
     inset: -2px;
@@ -528,7 +565,6 @@ body {
       #4fd8a3,
       #5b8def
     );
-    opacity: 1;
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -538,18 +574,6 @@ body {
       linear-gradient(#000 0 0);
     mask-composite: exclude;
     animation: ai-border-spin 14s linear infinite;
-    pointer-events: none;
-  }
-
-  /* A soft bloom just outside the ring. Without it the 2px band still has to
-     survive against a near-black header at small sizes; with it the pill
-     reads as lit rather than merely outlined. */
-  .nav-pill-active::after {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    border-radius: 999px;
-    box-shadow: 0 0 12px -2px rgba(123, 130, 255, 0.55);
     pointer-events: none;
   }
 

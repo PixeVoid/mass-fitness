@@ -52,7 +52,7 @@ export default async function ChooseGroupPage() {
     <>
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-[760px] px-5 pb-20 sm:px-8 sm:pb-28">
+      <main id="main" className="mx-auto w-full max-w-[760px] px-5 pb-20 sm:px-8 sm:pb-28">
         <HeaderSpacer />
 
         <p className="label text-faint">You&rsquo;re in</p>

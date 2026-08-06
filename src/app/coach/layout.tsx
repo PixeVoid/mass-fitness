@@ -58,7 +58,7 @@ export default async function CoachLayout({
         </div>
       </header>
 
-      <main className="mt-10">{children}</main>
+      <main id="main" className="mt-10">{children}</main>
     </div>
   );
 }

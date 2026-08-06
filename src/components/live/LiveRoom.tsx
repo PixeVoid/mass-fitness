@@ -183,7 +183,7 @@ export default function LiveRoom({ classId }: { classId: string }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-16">
+    <main id="main" className="flex min-h-dvh flex-col items-center justify-center px-5 py-16">
       {children}
     </main>
   );

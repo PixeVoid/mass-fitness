@@ -3,6 +3,7 @@ import { listMembers } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
 import { getPlans } from "@/lib/pricing";
 import MemberRow from "./MemberRow";
+import { started } from "@/lib/promises";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +12,23 @@ export default async function AdminMembersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  await requireAdmin();
+  // The queries start before the auth check rather than after it. They run on
+  // the *user's* client, so RLS is what actually decides what comes back — an
+  // impostor gets empty results — and `requireAdmin()` still refuses the
+  // render below. Awaiting auth first simply spent two round trips before
+  // asking for anything, which is the whole of the tab-switch delay.
+  const plansPromise = started(getPlans());
+  const adminPromise = requireAdmin();
 
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
 
-  const [members, plans] = await Promise.all([
-    listMembers(100, query || undefined),
-    getPlans(),
-  ]);
+  // The member query needs the search term, so it cannot start any earlier —
+  // but it does not have to queue behind the auth read either.
+  const membersPromise = started(listMembers(100, query || undefined));
+
+  await adminPromise;
+  const [members, plans] = await Promise.all([membersPromise, plansPromise]);
 
   return (
     <>

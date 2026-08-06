@@ -55,7 +55,7 @@ export default async function Home() {
       <StructuredData monthlyPlans={monthlyPlans} />
       <SiteHeader />
 
-      <main id="top" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
+      <main id="main" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
         {/* Hero + five feature cards, stacked on scroll */}
         <section id="features">
           <StackScrollContainer />

@@ -20,7 +20,7 @@ export default function DashboardLayout({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-[1000px] px-5 pb-16 sm:px-8 sm:pb-24">
+      <main id="main" className="mx-auto w-full max-w-[1000px] px-5 pb-16 sm:px-8 sm:pb-24">
         <HeaderSpacer />
         {children}
       </main>

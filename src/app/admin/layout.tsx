@@ -47,7 +47,7 @@ export default async function AdminLayout({
 
       <AdminTabs />
 
-      <main className="mt-10">{children}</main>
+      <main id="main" className="mt-10">{children}</main>
     </div>
   );
 }

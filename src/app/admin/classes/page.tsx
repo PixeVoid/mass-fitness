@@ -6,6 +6,7 @@ import { formatClassTime } from "@/lib/classes";
 import { groupClassSeries } from "@/lib/classSeries";
 import ClassForm from "./ClassForm";
 import ClassRow from "./ClassRow";
+import { started } from "@/lib/promises";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +15,22 @@ export default async function AdminClassesPage({
 }: {
   searchParams: Promise<{ cancelled?: string }>;
 }) {
-  await requireAdmin();
-
-  const [{ cancelled }, classes, trainers, groups] = await Promise.all([
+  // The queries start before the auth check rather than after it. They run on
+  // the *user's* client, so RLS is what actually decides what comes back — an
+  // impostor gets empty results — and `requireAdmin()` still refuses the
+  // render below. Awaiting auth first simply spent two round trips before
+  // asking for anything, which is the whole of the tab-switch delay.
+  const dataPromise = started(
+    Promise.all([
     searchParams,
     listAllClasses(),
     listTrainers(),
-    listTargetableGroups(),
-  ]);
+      listTargetableGroups(),
+    ]),
+  );
+
+  await requireAdmin();
+  const [{ cancelled }, classes, trainers, groups] = await dataPromise;
 
   const layout = groupClassSeries(classes);
 

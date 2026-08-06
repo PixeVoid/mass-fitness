@@ -2,12 +2,21 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/dal";
 import { getAdminStats, listMembers } from "@/lib/admin/queries";
 import { formatClassTime } from "@/lib/classes";
+import { started } from "@/lib/promises";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
+  // The queries start before the auth check rather than after it. They run on
+  // the *user's* client, so RLS is what actually decides what comes back — an
+  // impostor gets empty results — and `requireAdmin()` still refuses the
+  // render below. Awaiting auth first simply spent two round trips before
+  // asking for anything, which is the whole of the tab-switch delay.
+  const statsPromise = started(getAdminStats());
+  const membersPromise = started(listMembers(8));
+
   await requireAdmin();
-  const [stats, members] = await Promise.all([getAdminStats(), listMembers(8)]);
+  const [stats, members] = await Promise.all([statsPromise, membersPromise]);
 
   return (
     <>

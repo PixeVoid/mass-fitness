@@ -67,7 +67,7 @@ export default async function PaymentReturnPage({
     <>
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-[640px] px-5 pb-20 sm:px-8 sm:pb-28">
+      <main id="main" className="mx-auto w-full max-w-[640px] px-5 pb-20 sm:px-8 sm:pb-28">
         <HeaderSpacer />
 
         <p className="label text-faint">Payment</p>

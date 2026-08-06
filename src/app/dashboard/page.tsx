@@ -17,6 +17,7 @@ import {
   needsGroup,
 } from "@/lib/groups";
 import { getPlan, getPricingCatalogue } from "@/lib/pricing";
+import { started } from "@/lib/promises";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -53,45 +54,51 @@ export default async function DashboardPage({
   // Deliberately wider than the eight shown. The cap is applied after
   // filtering by group — taking the soonest eight first meant a member whose
   // group's next session was ninth globally saw an empty schedule.
-  const classesPromise = getUpcomingClasses(60);
-  const cataloguePromise = getPricingCatalogue();
+  const classesPromise = started(getUpcomingClasses(60));
+  const cataloguePromise = started(getPricingCatalogue());
   const noticeParam = searchParams.then((params) => params.notice);
 
   // Redirects to /login when signed out and /onboarding when the profile is
   // incomplete — the proxy's optimistic check is not relied on here.
   const profile = await requireOnboardedProfile();
 
+  // Trainers and admins run classes rather than buy them.
+  const isStaff = profile.role === "trainer" || profile.role === "admin";
+
+  // The subscription and the group memberships both need only `profile.id`,
+  // so they go together. Asking for them one after the other — as this did —
+  // spent a whole round trip waiting for an answer the second query never
+  // needed.
+  //
   // cataloguePromise is awaited but unread: it is in here to be *resolved*
   // before getPlan asks for it below, not for its value.
-  const [subscription, classes, noticeKey] = await Promise.all([
+  const [subscription, classes, noticeKey, groupIds] = await Promise.all([
     getActiveSubscription(),
     classesPromise,
     noticeParam,
+    isStaff ? Promise.resolve([]) : getMyGroupIds(profile.id),
     cataloguePromise,
   ]);
   const notice = noticeKey ? NOTICES[noticeKey] : undefined;
 
-  // Trainers and admins run classes rather than buy them.
-  const isStaff = profile.role === "trainer" || profile.role === "admin";
-
-  // Resolves off the already-warm catalogue rather than issuing its own query.
-  const plan = subscription
-    ? await getPlan(subscription.plan_tier, subscription.plan_duration)
-    : null;
-
-  // Which classes are actually this member's. Staff see the whole schedule —
-  // a coach needs to know what else is running, and an unassigned coach would
-  // otherwise see nothing at all.
-  const groupIds = isStaff ? [] : await getMyGroupIds(profile.id);
-  const myGroups = isStaff ? [] : await getMyGroups(profile.id);
-  // One rule rather than a branch: `decideClassAccess` already returns "ok"
-  // for staff, so passing the flag gets a coach the whole schedule without a
-  // second definition of what staff can see sitting here.
-  const visibleClasses = await filterClassesForMember(
-    classes,
-    { groupIds, planTier: subscription?.plan_tier ?? null, isStaff },
-    DASHBOARD_CLASS_LIMIT,
-  );
+  // Everything below needs `groupIds` and nothing needs anything else, so the
+  // three of them run together rather than in a chain. `getPlan` resolves off
+  // the already-warm catalogue and `getMyGroups` off the request-cached ids,
+  // so neither pays for what the other just fetched.
+  const [plan, myGroups, visibleClasses] = await Promise.all([
+    subscription
+      ? getPlan(subscription.plan_tier, subscription.plan_duration)
+      : null,
+    isStaff ? [] : getMyGroups(profile.id),
+    // One rule rather than a branch: `decideClassAccess` already returns "ok"
+    // for staff, so passing the flag gets a coach the whole schedule without a
+    // second definition of what staff can see sitting here.
+    filterClassesForMember(
+      classes,
+      { groupIds, planTier: subscription?.plan_tier ?? null, isStaff },
+      DASHBOARD_CLASS_LIMIT,
+    ),
+  ]);
 
   const awaitingGroup = needsGroup(profile, Boolean(subscription), groupIds.length);
 

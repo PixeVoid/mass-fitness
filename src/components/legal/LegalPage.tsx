@@ -18,7 +18,7 @@ export function LegalPage({
           header now carries the wordmark and the way back in. */}
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-3xl px-5 pb-20 sm:px-8 sm:pb-28">
+      <main id="main" className="mx-auto w-full max-w-3xl px-5 pb-20 sm:px-8 sm:pb-28">
         <HeaderSpacer />
 
         <p className="label text-faint">{eyebrow}</p>

@@ -23,7 +23,7 @@ export default function AuthShell({
   footer?: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16 sm:px-8 sm:py-24">
+    <main id="main" className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-16 sm:px-8 sm:py-24">
       <Link
         href="/"
         className="flex items-center gap-2 text-ink transition-opacity hover:opacity-70"

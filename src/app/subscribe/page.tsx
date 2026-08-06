@@ -57,7 +57,7 @@ export default async function SubscribePage({
     <>
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-[900px] px-5 pb-20 sm:px-8 sm:pb-28">
+      <main id="main" className="mx-auto w-full max-w-[900px] px-5 pb-20 sm:px-8 sm:pb-28">
         <HeaderSpacer />
 
         <p className="label text-faint">Membership</p>

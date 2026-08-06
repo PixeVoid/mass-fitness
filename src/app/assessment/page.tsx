@@ -16,7 +16,7 @@ export default function AssessmentPage() {
           replaces it. */}
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-5xl px-5 pb-12 sm:px-8 sm:pb-16">
+      <main id="main" className="mx-auto w-full max-w-5xl px-5 pb-12 sm:px-8 sm:pb-16">
         <HeaderSpacer />
 
         <div className="max-w-2xl text-center sm:text-left">
