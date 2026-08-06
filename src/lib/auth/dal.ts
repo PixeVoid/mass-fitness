@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import type { Profile, Subscription } from "@/lib/db-types";
+import type { PlanTier, Profile, Subscription } from "@/lib/db-types";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -160,23 +160,44 @@ export interface VisitorState {
   signedIn: boolean;
   isStaff: boolean;
   covered: boolean;
+  /**
+   * Which tier they are actually on, or null.
+   *
+   * `covered` alone is not enough to label a price card. Both cards were
+   * reading the same boolean, so a member on Group was told "you're on this"
+   * under One-to-one as well — the page claiming they had bought something
+   * they had not. A card has to compare against its own tier.
+   */
+  planTier: PlanTier | null;
 }
+
+const ANONYMOUS: VisitorState = {
+  signedIn: false,
+  isStaff: false,
+  covered: false,
+  planTier: null,
+};
 
 export const getVisitorState = cache(async (): Promise<VisitorState> => {
   // The anonymous path costs one cookie check and nothing else — the landing
   // page is mostly served to people with no session at all.
-  if (!(await hasSessionCookie())) {
-    return { signedIn: false, isStaff: false, covered: false };
-  }
+  if (!(await hasSessionCookie())) return ANONYMOUS;
 
   const profile = await getProfile();
-  if (!profile) return { signedIn: false, isStaff: false, covered: false };
+  if (!profile) return ANONYMOUS;
 
   const staff = profile.role === "trainer" || profile.role === "admin";
-  if (staff) return { signedIn: true, isStaff: true, covered: true };
+  if (staff) {
+    return { signedIn: true, isStaff: true, covered: true, planTier: null };
+  }
 
   const subscription = await getActiveSubscription();
-  return { signedIn: true, isStaff: false, covered: Boolean(subscription) };
+  return {
+    signedIn: true,
+    isStaff: false,
+    covered: Boolean(subscription),
+    planTier: subscription?.plan_tier ?? null,
+  };
 });
 
 export const isAdmin = cache(async (): Promise<boolean> => {

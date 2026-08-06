@@ -14,6 +14,7 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { getVisitorState } from "@/lib/auth/dal";
+import { planCta } from "@/lib/planCta";
 import { formatPaise } from "@/lib/plans";
 import { getPlans } from "@/lib/pricing";
 import type { PlanTier } from "@/lib/db-types";
@@ -142,13 +143,28 @@ export default async function Home() {
           <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-2">
             {monthlyPlans.map((plan, index) => {
               const PlanIcon = PLAN_ICONS[plan.tier];
+              const cta = planCta({
+                cardTier: plan.tier,
+                cardLabel: plan.label,
+                isStaff: visitor.isStaff,
+                planTier: visitor.planTier,
+                checkoutHref: `/subscribe?plan=${plan.id}`,
+              });
+
+              // "Most chosen" is a sales highlight for someone deciding. Once
+              // they have decided, the card worth marking is the one they are
+              // actually on — so their plan takes the highlight over ours.
+              const highlighted = visitor.planTier
+                ? cta.current
+                : plan.featured;
+
               return (
                 <div
                   key={plan.tier}
                   data-reveal=""
                   style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
                   className={`plan flex flex-col p-8 sm:p-10 ${
-                    plan.featured ? "plan-featured" : ""
+                    highlighted ? "plan-featured" : ""
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -163,8 +179,13 @@ export default async function Home() {
                       </span>
                       <h3 className="display-sm text-[1.75rem] text-ink">{plan.label}</h3>
                     </div>
-                    {plan.featured && (
-                      <span className="label text-faint">Most chosen</span>
+                    {cta.current ? (
+                      <span className="pick-badge shrink-0">Your plan</span>
+                    ) : (
+                      plan.featured &&
+                      !visitor.planTier && (
+                        <span className="label text-faint">Most chosen</span>
+                      )
                     )}
                   </div>
 
@@ -203,15 +224,8 @@ export default async function Home() {
                       offered a second purchase of what they have; that reads
                       as a broken site, and for a member it is a real risk of
                       being charged twice. */}
-                  <Link
-                    href={visitor.covered ? "/dashboard" : `/subscribe?plan=${plan.id}`}
-                    className="btn plan-cta mt-10 w-full"
-                  >
-                    {visitor.isStaff
-                      ? "Go to your dashboard"
-                      : visitor.covered
-                        ? "You're on this — open dashboard"
-                        : `Choose ${plan.label.toLowerCase()}`}
+                  <Link href={cta.href} className="btn plan-cta mt-10 w-full">
+                    {cta.label}
                   </Link>
                 </div>
               );

@@ -9,6 +9,10 @@ import type { HeaderIdentity } from "@/lib/auth/dal";
 import { scrollToFeatureCard } from "@/lib/featureScroll";
 
 const LINKS = [
+  // Home first. Off the landing page the section links go somewhere the
+  // visitor has not been, and there was no link that simply meant "back to
+  // the start" other than the wordmark, which not everyone reads as a button.
+  { href: "/#top", label: "Home" },
   { href: "/#features", label: "Features" },
   { href: "/#classes", label: "Classes" },
   { href: "/#how-it-works", label: "How it works" },
@@ -99,6 +103,15 @@ export default function Nav({
     if (!href.startsWith("/#")) return;
     const slug = href.slice(2);
 
+    // "Home" means the top of the page, not the top of <main> — scrolling an
+    // element into view leaves the hero's first rows above the fold.
+    if (slug === "top") {
+      if (window.location.pathname !== "/") return;
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     // Off the landing page there is nothing to scroll to, so every one of
     // these has to fall through to real navigation. Each branch below only
     // takes over the click once it knows it has a target — a preventDefault
@@ -125,6 +138,12 @@ export default function Nav({
   const accountHref = identity ? "/dashboard" : "/login";
   const accountLabel = identity ? identity.firstName : "Login";
 
+  // A pill with someone's first name in it does not say what tapping it does.
+  // On desktop the `title` attribute covers that; a phone has no hover, so the
+  // caption below says it outright — then fades itself out, because a
+  // permanent line under a fixed header is noise once it has been read.
+  const showHint = Boolean(identity) && !onAccount;
+
   return (
     <header className="pointer-events-none fixed inset-x-0 top-4 z-50 flex items-center justify-between gap-4 px-4 sm:top-6 sm:px-6 lg:px-8">
       {/* Wordmark */}
@@ -135,7 +154,10 @@ export default function Nav({
           className="flex items-center gap-2 text-base text-ink transition-opacity hover:opacity-70 sm:gap-2.5 sm:text-lg"
         >
           <LogoMark className="h-5 sm:h-6" />
-          <span className="brand-mark">Mass Fitness</span>
+          {/* The wordmark text is dropped on the narrowest screens so the
+              account pill fits beside the theme toggle. The mark alone still
+              identifies the site, and the link still goes home. */}
+          <span className="brand-mark hidden min-[380px]:inline">Mass Fitness</span>
         </Link>
       </div>
 
@@ -145,7 +167,10 @@ export default function Nav({
         className={`${island} hidden items-center gap-1 p-1.5 md:flex`}
       >
         {LINKS.map((link) => {
-          const isActive = active === link.href;
+          // Home carries the marker when no section does — at the top of the
+          // landing page, which is exactly where "Home" means you are.
+          const isActive =
+            link.href === "/#top" ? isHome && active === "" : active === link.href;
           return (
             <Link
               key={link.href}
@@ -167,6 +192,7 @@ export default function Nav({
       {/* Actions. The row is right-anchored, so a longer name grows the island
           leftwards on its own — the name only needs a ceiling so a very long
           one cannot push into the links. */}
+      <div className="pointer-events-none relative flex flex-col items-end">
       <div className={`${island} flex items-center gap-1 p-1.5`}>
         <ThemeToggle />
 
@@ -175,14 +201,16 @@ export default function Nav({
           onClick={() => setOpen(false)}
           aria-current={onAccount ? "page" : undefined}
           title={identity ? `${identity.firstName} — your dashboard` : undefined}
-          className={`hidden rounded-full px-5 py-2.5 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:block ${
+          className={`block rounded-full px-4 py-2 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:px-5 sm:py-2.5 ${
             onAccount ? "nav-pill-active" : "bg-inverse-bg text-inverse-fg"
           }`}
         >
           {/* The clamp lives on an inner span: the active ring is drawn just
               outside the pill, and an `overflow: hidden` on the pill itself
               would crop it to a stripe along the top edge. */}
-          <span className="block max-w-[9rem] truncate">{accountLabel}</span>
+          <span className="block max-w-[5.5rem] truncate sm:max-w-[9rem]">
+            {accountLabel}
+          </span>
         </Link>
 
         <button
@@ -205,6 +233,15 @@ export default function Nav({
             />
           </span>
         </button>
+      </div>
+
+      {/* Sits under the pill rather than inside it, so the island keeps its
+          shape and the caption can be dropped without reflowing anything. */}
+      {showHint && (
+        <p className="hint-fade pointer-events-none mt-1.5 mr-1 text-[0.6875rem] leading-none text-faint sm:hidden">
+          Tap your name for your dashboard
+        </p>
+      )}
       </div>
 
       {/* Mobile sheet. Squared off rather than sharing the pills' `rounded-full`:
