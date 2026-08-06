@@ -127,6 +127,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col bg-paper text-ink">
+        {/* Keyboard users hit six nav pills and a theme toggle before any
+            page content, on every route. Visually hidden until focused, which
+            is the one moment it is useful. */}
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <Reveal />
         {children}
         <ScrollToTopButton />

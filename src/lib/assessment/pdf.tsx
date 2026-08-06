@@ -61,6 +61,11 @@ function Bar({ value, max }: { value: number; max: number }) {
   );
 }
 
+/** "20.0 / 25" — the maximum loses its decimal when it does not need one. */
+function partLabel(value: number, max: number): string {
+  return `${value.toFixed(1)} / ${max.toFixed(max % 1 === 0 ? 0 : 1)}`;
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
@@ -94,19 +99,23 @@ export function AssessmentReportDocument({
         <Text style={styles.band}>{result.band}</Text>
         <Text style={styles.bandCopy}>{result.bandCopy}</Text>
 
+        {/* `partMax` rather than a hard 25: when the physical-performance
+            questions are skipped, three parts cover the same 100 points and
+            both the values and their maximum scale together. Printing a
+            rescaled value against a fixed "/ 25" made bars overflow. */}
         <Text style={styles.sectionTitle}>Score breakdown</Text>
-        <Row label="BMI" value={`${result.breakdown.bmi.toFixed(1)} / 25`} />
-        <Bar value={result.breakdown.bmi} max={25} />
-        <Row label="Activity" value={`${result.breakdown.activity.toFixed(1)} / 25`} />
-        <Bar value={result.breakdown.activity} max={25} />
+        <Row label="BMI" value={partLabel(result.breakdown.bmi, result.partMax)} />
+        <Bar value={result.breakdown.bmi} max={result.partMax} />
+        <Row label="Activity" value={partLabel(result.breakdown.activity, result.partMax)} />
+        <Bar value={result.breakdown.activity} max={result.partMax} />
         {result.breakdown.physical !== null && (
           <>
-            <Row label="Physical performance" value={`${result.breakdown.physical.toFixed(1)} / 25`} />
-            <Bar value={result.breakdown.physical} max={25} />
+            <Row label="Physical performance" value={partLabel(result.breakdown.physical, result.partMax)} />
+            <Bar value={result.breakdown.physical} max={result.partMax} />
           </>
         )}
-        <Row label="Lifestyle" value={`${result.breakdown.lifestyle.toFixed(1)} / 25`} />
-        <Bar value={result.breakdown.lifestyle} max={25} />
+        <Row label="Lifestyle" value={partLabel(result.breakdown.lifestyle, result.partMax)} />
+        <Bar value={result.breakdown.lifestyle} max={result.partMax} />
 
         <Text style={styles.sectionTitle}>Your answers</Text>
         <Row label="Age" value={String(answers.age)} />

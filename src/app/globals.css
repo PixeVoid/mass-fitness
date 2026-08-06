@@ -16,9 +16,15 @@
   --paper: #f7f6f4; /* page background — warm off-white */
   --surface: #ffffff; /* raised panel */
   --surface-sunk: #f0efec; /* inset well, image placeholder */
-  --ink: #121212; /* primary text */
-  --muted: #6b6b6b; /* secondary text */
-  --faint: #9a9a9a; /* tertiary text, labels */
+  --ink: #121212; /* primary text — 17.4:1 on paper */
+  /* The two quiet greys were set by eye and both were too light to read.
+     `--faint` was #9a9a9a: 2.6:1 against this paper, less than half what WCAG
+     AA asks for, on 175 usages that include class times, capacity counts and
+     "no trainer assigned" — information, not decoration. Both are now the
+     lightest value that still passes, so the hierarchy is intact and the
+     bottom of it is legible. */
+  --muted: #5e5e5e; /* secondary text — 6.0:1 */
+  --faint: #717171; /* tertiary text, labels — 4.5:1 */
   --line: rgba(18, 18, 18, 0.1); /* hairline */
   --line-strong: rgba(18, 18, 18, 0.24); /* hairline, emphasised */
   --overlay: rgba(18, 18, 18, 0.04); /* hover wash */
@@ -37,6 +43,13 @@
   /* Status dot accent — kept as its own token (rather than inlined in
      .live-dot) since this is expected to be tuned per-status later. */
   --live-dot-color: #22c55e;
+
+  /* Destructive actions. The only hue in the palette besides the AI ring, and
+     it earns its place: "delete" must not look like every other button on the
+     page when it is the one action that cannot be undone. */
+  --danger: #b42318;
+  --danger-fg: #ffffff;
+  --danger-soft: rgba(180, 35, 24, 0.09);
 }
 
 /* Dark values live in a single place and are applied from two selectors:
@@ -50,8 +63,8 @@
     --surface: #161616;
     --surface-sunk: #1c1c1c;
     --ink: #f2f1ee;
-    --muted: #9a9a9a;
-    --faint: #6c6c6c;
+    --muted: #9a9a9a; /* 6.9:1 on this paper — already passing */
+    --faint: #7b7b7b; /* was #6c6c6c, 3.7:1 — under AA */
     --line: rgba(255, 255, 255, 0.11);
     --line-strong: rgba(255, 255, 255, 0.26);
     --overlay: rgba(255, 255, 255, 0.05);
@@ -61,6 +74,12 @@
 
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
       0 12px 32px -16px rgba(0, 0, 0, 0.7);
+
+    /* Lifted and desaturated: #b42318 on a near-black page fails contrast and
+       reads brown rather than red. */
+    --danger: #ff8a80;
+    --danger-fg: #1a0603;
+    --danger-soft: rgba(255, 138, 128, 0.13);
   }
 }
 
@@ -72,7 +91,7 @@
   --surface-sunk: #1c1c1c;
   --ink: #f2f1ee;
   --muted: #9a9a9a;
-  --faint: #6c6c6c;
+  --faint: #7b7b7b;
   --line: rgba(255, 255, 255, 0.11);
   --line-strong: rgba(255, 255, 255, 0.26);
   --overlay: rgba(255, 255, 255, 0.05);
@@ -82,6 +101,10 @@
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4),
     0 12px 32px -16px rgba(0, 0, 0, 0.7);
+
+  --danger: #ff8a80;
+  --danger-fg: #1a0603;
+  --danger-soft: rgba(255, 138, 128, 0.13);
 }
 
 @theme inline {
@@ -96,6 +119,9 @@
   --color-overlay: var(--overlay);
   --color-inverse-bg: var(--inverse-bg);
   --color-inverse-fg: var(--inverse-fg);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
 
   --font-display: var(--font-instrument), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -291,6 +317,266 @@ body {
     box-shadow: 0 0 0 4px var(--overlay);
   }
 
+  /* --- Staff CTA --------------------------------------------------------
+     The Admin and Schedule buttons on the dashboard. Same conic ring as the
+     AI CTA and deliberately quieter than it — a third of the opacity and a
+     much slower turn. These are permanent fixtures for one or two people,
+     not the loudest thing on a page a stranger is reading, and the AI CTA
+     has to stay the brightest object on screen.                          */
+
+  .btn-staff {
+    position: relative;
+    border-color: transparent;
+  }
+
+  .btn-staff::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 999px;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--ai-angle),
+      #5b8def,
+      #9b6bff,
+      #4fd8a3,
+      #5b8def
+    );
+    opacity: 0.65;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: ai-border-spin 12s linear infinite;
+    pointer-events: none;
+  }
+
+  .btn-staff:hover::before {
+    opacity: 1;
+  }
+
+  /* --- Destructive actions ----------------------------------------------
+     Delete used to look exactly like Save. The colour is the warning, and it
+     is worth breaking a monochrome palette for: an irreversible action that
+     looks identical to a reversible one is a design defect, not a style
+     choice. `.btn-quiet-danger` stays neutral until hover, for rows where a
+     column of red buttons would be the loudest thing on the page.        */
+
+  .btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--danger-fg);
+  }
+
+  .btn-danger:hover {
+    box-shadow: 0 0 0 4px var(--danger-soft);
+  }
+
+  .btn-quiet-danger {
+    border-color: var(--line-strong);
+    color: var(--danger);
+    background: transparent;
+  }
+
+  .btn-quiet-danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--danger-fg);
+  }
+
+  /* --- Selectable options -----------------------------------------------
+     Selection used to be `bg-surface` against `bg-paper`: a 3% difference in
+     lightness, which is invisible in daylight, invisible in dark mode, and
+     invisible to anyone who does not already know which one they picked. A
+     choice the user cannot see they have made is a broken control.
+
+     Three signals, because one is never enough: a 2px ring in the text
+     colour, a raised fill, and an explicit badge. The ring is an inset
+     box-shadow rather than a border so it cannot shift the grid it sits in —
+     these live in a `gap-px` grid where a real border would reflow the row. */
+
+  .pick {
+    position: relative;
+    background: var(--paper);
+    transition:
+      background-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+
+  .pick:hover {
+    background: var(--surface);
+  }
+
+  .pick-selected,
+  .pick-selected:hover {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+
+  /* Radio rows. The native dot stays the control — it is what a screen reader
+     and a keyboard both understand — but a 16px dot is not enough feedback on
+     a full-width row, which is how someone ends up paying for the group above
+     the one they meant. `:has()` lifts the whole row and needs no state. */
+
+  .pick-row {
+    transition:
+      background-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease);
+  }
+
+  .pick-row:has(input:checked) {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
+  }
+
+  /* --- Confirmation dialog ----------------------------------------------
+     The native <dialog> centred and given the site's panel treatment. The
+     backdrop is dimmed enough to make the page behind clearly inert, which is
+     half of what tells someone this needs an answer before anything else. */
+
+  .confirm-dialog {
+    margin: auto;
+    width: min(28rem, calc(100vw - 2rem));
+    border: 1px solid var(--line-strong);
+    border-radius: 1rem;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-soft);
+    padding: 0;
+  }
+
+  .confirm-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  /* --- Self-clearing hint ------------------------------------------------
+     The "tap your name" caption under the account pill on phones. It has to
+     be said, because a pill containing someone's first name does not announce
+     that it opens their dashboard and a touch screen has no hover to explain
+     it — but it only has to be said once, and a permanent line under a fixed
+     header is noise on every page after the first.
+
+     Done in CSS rather than with a timer and a localStorage flag: reading
+     storage during render is a hydration mismatch, and setting state from an
+     effect to correct it is a second render to say something the stylesheet
+     can say by itself. `forwards` keeps it gone, and `visibility` at the end
+     takes it out of the accessibility tree rather than leaving an invisible
+     line for a screen reader to announce.                                 */
+
+  .hint-fade {
+    animation: hint-fade 7s var(--ease) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* The global reduced-motion rule crushes every animation to 0.001ms with
+       !important, and `forwards` would then snap this straight to its hidden
+       end state — the hint would never be readable at all for exactly the
+       users least likely to have caught it. So it simply does not animate,
+       and stays. A permanent caption is the lesser cost. */
+    .hint-fade {
+      animation: none;
+    }
+  }
+
+  /* --- Skip link ---------------------------------------------------------
+     Off-screen rather than `display: none`: a hidden element is not focusable,
+     so hiding it that way would remove the only thing it exists to do.     */
+
+  .skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    border-radius: 999px;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    transition: transform 0.2s var(--ease);
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+
+  .pick-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+    padding: 0.1875rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* --- Active pill ------------------------------------------------------
+     Two strengths, and the distinction matters because this treatment was
+     applied to everything and stopped meaning anything.
+
+     `.nav-pill-active` is the plain one: an inverse fill, no gradient. It is
+     what an admin tab or any other "you are here" marker gets — those are
+     ordinary state, and a glowing animated ring around the word "Overview"
+     reads as an alert.
+
+     `.nav-pill-glow` adds the conic ring, and is deliberately rare: the
+     account pill only. That pill carries a person's first name and nothing
+     else says it opens their dashboard, so it earns the one treatment on the
+     site that draws the eye on its own. It shares the gradient with the AI
+     CTA, which keeps "this is the live one" a single idea, and turns at half
+     the speed so it never competes with it.
+
+     The ring is a masked pseudo-element rather than a border, because a
+     gradient cannot paint a border directly.                              */
+
+  .nav-pill-active {
+    position: relative;
+    background: var(--inverse-bg);
+    color: var(--inverse-fg);
+  }
+
+  /* Its own positioning context, so the ring works on a pill that is not also
+     `.nav-pill-active` — the account pill glows on every page, not only the
+     one it points at. */
+  .nav-pill-glow {
+    position: relative;
+  }
+
+  .nav-pill-glow::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--ai-angle),
+      #5b8def,
+      #9b6bff,
+      #4fd8a3,
+      #5b8def
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: ai-border-spin 14s linear infinite;
+    pointer-events: none;
+  }
+
   /* --- Pricing plans ----------------------------------------------------
      One plan carries the highlight by default. On a pointer device the
      highlight follows the cursor instead of staying pinned to the middle
@@ -298,13 +584,22 @@ body {
      and the hovered plan then takes it. The two hover rules have equal
      specificity, so the "lift the hovered one" rule must come second.     */
 
+  /* The highlighted plan used to be `--surface` against `--paper`: a 3%
+     difference in lightness, invisible in daylight and invisible in dark mode.
+     Same defect the plan picker had, fixed the same way — a ring in the text
+     colour, which cannot fail to show against either paper. Inset rather than
+     a border so it does not reflow the `gap-px` grid the cards sit in. */
+
   .plan {
     background: var(--paper);
-    transition: background-color 0.3s var(--ease);
+    transition:
+      background-color 0.3s var(--ease),
+      box-shadow 0.3s var(--ease);
   }
 
   .plan-featured {
     background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
   }
 
   .plan-cta {
@@ -322,6 +617,7 @@ body {
   @media (hover: hover) {
     .plan-grid:hover .plan {
       background: var(--paper);
+      box-shadow: none;
     }
 
     .plan-grid:hover .plan .plan-cta {
@@ -332,6 +628,7 @@ body {
 
     .plan-grid .plan:hover {
       background: var(--surface);
+      box-shadow: inset 0 0 0 2px var(--ink);
     }
 
     .plan-grid .plan:hover .plan-cta {
@@ -339,6 +636,39 @@ body {
       background: var(--inverse-bg);
       color: var(--inverse-fg);
     }
+  }
+
+  /* --- Prose emphasis ---------------------------------------------------
+     `font-synthesis: weight` on <html> stops the browser faking a bold from
+     Instrument Serif, which ships regular + italic only. The side effect is
+     that it also forbids a synthesised *italic* — and Inter, which sets all
+     body copy, ships no italic face at all. So <em> inside a post body
+     rendered upright, silently: an author typing *emphasis* saw nothing
+     happen. Style synthesis is re-enabled here alone, where the alternative
+     is no emphasis rather than a fake one.                                */
+
+  .md-em {
+    font-style: italic;
+    font-synthesis: weight style;
+  }
+
+  /* --- Skeletons --------------------------------------------------------
+     Placeholder blocks for streamed segments. A slow sweep rather than a
+     pulse: a pulsing block draws the eye to the fact that it is empty, where a
+     sweep reads as "arriving". Sits on the sunk surface token so it stays a
+     tone of the page in both themes rather than a grey patch.             */
+
+  .skeleton {
+    background-color: var(--surface-sunk);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--overlay) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
   }
 
   /* --- Links ------------------------------------------------------------
@@ -552,9 +882,29 @@ body {
   initial-value: 0deg;
 }
 
+@keyframes hint-fade {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 @keyframes ai-border-spin {
   to {
     --ai-angle: 360deg;
+  }
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
 

@@ -23,7 +23,7 @@ export default function ScrollToTopButton() {
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       aria-label="Scroll to top"
       tabIndex={visible ? 0 : -1}
-      className={`fixed bottom-5 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper/80 text-ink shadow-[var(--shadow-soft)] backdrop-blur-xl transition-all duration-300 hover:bg-overlay sm:bottom-6 sm:right-6 ${
+      className={`fixed bottom-[calc(1.25rem+var(--fab-stack,0px))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper/80 text-ink shadow-[var(--shadow-soft)] backdrop-blur-xl transition-all duration-300 hover:bg-overlay sm:bottom-[calc(1.5rem+var(--fab-stack,0px))] sm:right-6 ${
         visible
           ? "translate-y-0 opacity-100"
           : "pointer-events-none translate-y-3 opacity-0"

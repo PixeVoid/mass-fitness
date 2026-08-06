@@ -31,6 +31,7 @@ interface SubmitResult {
   band: string;
   bandCopy: string;
   breakdown: { bmi: number; activity: number; physical: number | null; lifestyle: number };
+  partMax: number;
   tierNudge: "group" | "one_to_one";
   healthFlag: boolean;
   bmi: number;
@@ -107,7 +108,15 @@ export default function AssessmentQuiz() {
     <div className="panel mx-auto max-w-xl rounded-2xl p-6 sm:p-8">
       <Progress step={step} />
 
-      {step === 0 && <BasicsStep draft={draft} update={update} onNext={next} />}
+      {step === 0 && (
+        <BasicsStep
+          draft={draft}
+          update={update}
+          name={lead.name}
+          setName={(name) => setLead({ ...lead, name })}
+          onNext={next}
+        />
+      )}
       {step === 1 && (
         <GoalStep draft={draft} update={update} onNext={next} onBack={back} />
       )}
@@ -227,13 +236,18 @@ function StepHeading({ label, title }: { label: string; title: string }) {
 function BasicsStep({
   draft,
   update,
+  name,
+  setName,
   onNext,
 }: {
   draft: Draft;
   update: <K extends keyof AssessmentAnswers>(key: K, value: AssessmentAnswers[K]) => void;
+  name: string;
+  setName: (name: string) => void;
   onNext: () => void;
 }) {
   const valid =
+    name.trim().length > 0 &&
     !!draft.age && draft.age >= 13 && draft.age <= 100 &&
     !!draft.gender &&
     !!draft.heightCm && draft.heightCm >= 100 && draft.heightCm <= 250 &&
@@ -244,6 +258,22 @@ function BasicsStep({
       <StepHeading label="Section 1 of 5" title="The basics" />
 
       <div className="flex flex-col gap-5">
+        {/* Asked first, and only once. It used to be the very last thing
+            before submitting, which meant five sections of questions from a
+            stranger who had never been greeted by name — and the one field
+            that lets every screen after this address the person directly. */}
+        <div>
+          <label htmlFor="lead-name" className="field-label">Your name</label>
+          <input
+            id="lead-name"
+            className="field"
+            autoComplete="given-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ankit"
+          />
+        </div>
+
         <div>
           <label htmlFor="age" className="field-label">Age</label>
           <input
@@ -567,23 +597,23 @@ function ContactStep({
 
   return (
     <div>
-      <StepHeading label="Almost there" title="Your fitness score is ready" />
+      {/* Name is collected in section 1 now, so this step greets rather than
+          asks again — and `valid` still checks it, because a blank name here
+          means something upstream went wrong, not that we should send it. */}
+      <StepHeading
+        label="Almost there"
+        title={
+          lead.name.trim()
+            ? `${lead.name.trim().split(/\s+/)[0]}, your score is ready`
+            : "Your fitness score is ready"
+        }
+      />
       <p className="mb-6 text-[0.875rem] text-muted">
-        Enter your details to view your personalised results — we&rsquo;ll also
+        Where should we send it? We&rsquo;ll show your results right away and
         email you a copy.
       </p>
 
       <div className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="lead-name" className="field-label">Name</label>
-          <input
-            id="lead-name"
-            className="field"
-            value={lead.name}
-            onChange={(e) => setLead({ ...lead, name: e.target.value })}
-            placeholder="Your name"
-          />
-        </div>
         <div>
           <label htmlFor="lead-phone" className="field-label">Phone number (WhatsApp preferred)</label>
           <input
@@ -638,15 +668,25 @@ function ContactStep({
 // Results
 // ---------------------------------------------------------------------------
 
-function BreakdownBar({ label, value }: { label: string; value: number | null }) {
+function BreakdownBar({
+  label,
+  value,
+  max,
+}: {
+  label: string;
+  value: number | null;
+  max: number;
+}) {
   if (value === null) return null;
-  const pct = Math.max(0, Math.min(100, (value / 25) * 100));
+  const pct = Math.max(0, Math.min(100, (value / max) * 100));
 
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between text-[0.8125rem]">
         <span className="text-muted">{label}</span>
-        <span className="numeric text-faint">{value.toFixed(1)} / 25</span>
+        <span className="numeric text-faint">
+          {value.toFixed(1)} / {max.toFixed(max % 1 === 0 ? 0 : 1)}
+        </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunk">
         <div className="h-full rounded-full bg-ink" style={{ width: `${pct}%` }} />
@@ -675,10 +715,10 @@ function ResultScreen({ name, result }: { name: string; result: SubmitResult }) 
       <p className="mt-1 text-[0.9375rem] text-muted">{result.bandCopy}</p>
 
       <div className="mt-8 flex flex-col gap-4 border-t border-line pt-6">
-        <BreakdownBar label="BMI" value={result.breakdown.bmi} />
-        <BreakdownBar label="Activity" value={result.breakdown.activity} />
-        <BreakdownBar label="Physical performance" value={result.breakdown.physical} />
-        <BreakdownBar label="Lifestyle" value={result.breakdown.lifestyle} />
+        <BreakdownBar label="BMI" value={result.breakdown.bmi} max={result.partMax} />
+        <BreakdownBar label="Activity" value={result.breakdown.activity} max={result.partMax} />
+        <BreakdownBar label="Physical performance" value={result.breakdown.physical} max={result.partMax} />
+        <BreakdownBar label="Lifestyle" value={result.breakdown.lifestyle} max={result.partMax} />
       </div>
 
       <div className="mt-8 rounded-xl bg-surface-sunk p-5">

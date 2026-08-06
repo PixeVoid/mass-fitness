@@ -1,17 +1,22 @@
-import { AccessToken, type VideoGrant } from "livekit-server-sdk";
 import * as z from "zod";
 import { getActiveSubscription, getProfile, getUser } from "@/lib/auth/dal";
-import { getClassById } from "@/lib/classes";
-import { serverEnv } from "@/lib/env";
+import { classJoinWindow, decideClassDoor, getClassById } from "@/lib/classes";
+import { decideJoin } from "@/lib/groups";
+import { getVideoProvider } from "@/lib/video/livekit";
 
 /**
- * POST /api/live/token — mints a LiveKit join token (BUILD_PLAN 3.5).
+ * POST /api/live/token — mints a room join token (BUILD_PLAN 3.5).
  *
- * This route *is* the paywall. LiveKit will not admit a participant without a
- * token signed by our secret, so a user who is refused here cannot join by
- * any other means — there is no shareable link that bypasses it. Everything
- * it decides is re-derived server-side; nothing from the request body is
- * trusted beyond the class id.
+ * This route *is* the paywall. The video provider will not admit a participant
+ * without a token signed by our secret, so a user who is refused here cannot
+ * join by any other means — there is no shareable link that bypasses it.
+ * Everything it decides is re-derived server-side; nothing from the request
+ * body is trusted beyond the class id.
+ *
+ * Which provider mints the token is decided behind `getVideoProvider()`, and
+ * this route deliberately knows nothing about it. That keeps the access
+ * decision — the part worth being careful about — untouched by a change of
+ * video vendor.
  */
 
 // Reads cookies and the database — never a candidate for prerendering.
@@ -58,58 +63,74 @@ export async function POST(request: Request) {
     return json({ error: "class_not_found" }, 404);
   }
 
-  if (fitnessClass.status === "cancelled" || fitnessClass.status === "ended") {
-    return json({ error: "class_closed" }, 409);
-  }
-
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
+  // Staff may always be *in* the room; only the host may publish into it. A
+  // trainer covering or observing a colleague's session was being told to buy
+  // a membership, which is the paywall applied to the wrong side of the door.
+  const isStaff = isAdmin || profile?.role === "trainer";
   // A trainer publishes only into their own class. The admin role is the
   // override, so a stand-in coach is a data change, not a code change.
   const isHost = isAdmin || (!!profile && fitnessClass.trainer_id === user.id);
 
-  // The gate. Hosts skip it — a trainer should not be locked out of the class
-  // they are running because their own membership lapsed.
-  if (fitnessClass.is_premium && !isHost) {
-    // Checks status = 'active' *and* end_date in the future; an expired row
-    // that was never swept still fails here.
-    const subscription = await getActiveSubscription();
-    if (!subscription) {
-      return json(
-        { error: "subscription_required", redirectTo: "/#pricing" },
-        403,
-      );
-    }
+  // The door, enforced here rather than only drawn on the dashboard. This used
+  // to read the status field alone, which meant the 20-minute window was copy
+  // and not a rule: a token could be minted for a class days out, and one
+  // whose trainer never marked it ended stayed open indefinitely.
+  const door = decideClassDoor(fitnessClass, { isStaff: isHost || isStaff });
+  if (door === "closed") {
+    return json({ error: "class_closed" }, 409);
+  }
+  if (door === "too_early") {
+    return json(
+      {
+        error: "class_not_open",
+        // So the client can say *when*, rather than just "not yet".
+        opensAtMs: classJoinWindow(fitnessClass).opensAtMs,
+      },
+      409,
+    );
   }
 
-  const grant: VideoGrant = {
-    room: fitnessClass.livekit_room,
-    roomJoin: true,
-    // One-to-many: the trainer publishes, everyone else receives. Viewers get
-    // canPublish: false explicitly — omitting both flags grants both.
-    canPublish: isHost,
-    canSubscribe: true,
-    // Lets viewers use chat/reactions without opening a media track.
-    canPublishData: true,
-    canUpdateOwnMetadata: false,
-  };
-
-  const token = new AccessToken(
-    serverEnv.livekitApiKey,
-    serverEnv.livekitApiSecret,
-    {
-      // Supabase user id, so a LiveKit participant is traceable back to a row.
-      identity: user.id,
-      name: profile?.name ?? "Member",
-      ttl: TOKEN_TTL_SECONDS,
-    },
+  // The gate, in one decision. It used to sit inside `if (is_premium)`, which
+  // meant a free class targeted at one cohort admitted anybody signed in — and
+  // it read nothing about plan tier, so a one-to-one membership silently
+  // included every group class. `decideClassAccess` is now the only rule, and
+  // the dashboard and the reminder job call the same one.
+  const subscription = isStaff ? null : await getActiveSubscription();
+  const decision = await decideJoin(
+    fitnessClass,
+    user.id,
+    subscription?.plan_tier ?? null,
+    isHost,
+    isStaff,
   );
-  token.addGrant(grant);
+
+  if (decision === "subscription_required") {
+    return json({ error: "subscription_required", redirectTo: "/subscribe" }, 403);
+  }
+  if (decision === "not_in_group") {
+    return json({ error: "not_in_group", redirectTo: "/dashboard" }, 403);
+  }
+
+  const provider = getVideoProvider();
+  const room = await provider.createRoomToken({
+    room: fitnessClass.livekit_room,
+    // Our own user id, so a participant in the provider's dashboard traces
+    // back to a row here.
+    identity: user.id,
+    displayName: profile?.name ?? "Member",
+    isHost,
+    ttlSeconds: TOKEN_TTL_SECONDS,
+  });
 
   return json(
     {
-      token: await token.toJwt(),
-      serverUrl: serverEnv.livekitUrl,
+      // `provider` travels with the token so the client knows which stage
+      // component to render — that is the client half of the seam.
+      provider: room.provider,
+      token: room.token,
+      serverUrl: room.serverUrl,
       room: fitnessClass.livekit_room,
       role: isHost ? "host" : "viewer",
       classTitle: fitnessClass.title,

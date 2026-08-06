@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import ClassGrid from "@/components/ClassGrid";
 import Footer from "@/components/Footer";
-import Nav from "@/components/Nav";
 import SectionHeading from "@/components/SectionHeading";
+import SiteHeader from "@/components/SiteHeader";
 import StackScrollContainer from "@/components/StackScrollContainer";
 import StatRow from "@/components/StatRow";
 import { StructuredData } from "@/components/StructuredData";
@@ -12,6 +13,8 @@ import {
   TargetIcon,
   UsersIcon,
 } from "@/components/icons";
+import { getVisitorState } from "@/lib/auth/dal";
+import { planCta } from "@/lib/planCta";
 import { formatPaise } from "@/lib/plans";
 import { getPlans } from "@/lib/pricing";
 import type { PlanTier } from "@/lib/db-types";
@@ -40,15 +43,19 @@ const PLAN_ICONS: Record<PlanTier, typeof UsersIcon> = {
 };
 
 export default async function Home() {
-  const plans = await getPlans();
+  // Whether there is anything left to sell this visitor. The landing page is
+  // the same page for everyone, but its calls to action are not: an admin, a
+  // coach and a paid-up member were all being pushed back into checkout.
+  const [plans, visitor] = await Promise.all([getPlans(), getVisitorState()]);
+  const classesHref = visitor.covered ? "/dashboard" : "#pricing";
   const monthlyPlans = plans.filter((plan) => plan.duration === "monthly");
 
   return (
     <>
       <StructuredData monthlyPlans={monthlyPlans} />
-      <Nav />
+      <SiteHeader />
 
-      <main id="top" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
+      <main id="main" className="px-2.5 pt-2 sm:px-4 sm:pt-3 lg:px-5">
         {/* Hero + five feature cards, stacked on scroll */}
         <section id="features">
           <StackScrollContainer />
@@ -80,7 +87,7 @@ export default async function Home() {
             }
             body="Load, volume and complexity step up week over week. Pick the stimulus — we handle the periodisation."
           />
-          <ClassGrid />
+          <ClassGrid href={classesHref} />
         </section>
 
         {/* HOW IT WORKS */}
@@ -136,13 +143,28 @@ export default async function Home() {
           <div className="plan-grid mt-16 grid grid-cols-1 gap-px border-t border-line bg-line sm:mt-20 lg:grid-cols-2">
             {monthlyPlans.map((plan, index) => {
               const PlanIcon = PLAN_ICONS[plan.tier];
+              const cta = planCta({
+                cardTier: plan.tier,
+                cardLabel: plan.label,
+                isStaff: visitor.isStaff,
+                planTier: visitor.planTier,
+                checkoutHref: `/subscribe?plan=${plan.id}`,
+              });
+
+              // "Most chosen" is a sales highlight for someone deciding. Once
+              // they have decided, the card worth marking is the one they are
+              // actually on — so their plan takes the highlight over ours.
+              const highlighted = visitor.planTier
+                ? cta.current
+                : plan.featured;
+
               return (
                 <div
                   key={plan.tier}
                   data-reveal=""
                   style={{ "--reveal-delay": `${index * 90}ms` } as CSSProperties}
                   className={`plan flex flex-col p-8 sm:p-10 ${
-                    plan.featured ? "plan-featured" : ""
+                    highlighted ? "plan-featured" : ""
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -157,8 +179,13 @@ export default async function Home() {
                       </span>
                       <h3 className="display-sm text-[1.75rem] text-ink">{plan.label}</h3>
                     </div>
-                    {plan.featured && (
-                      <span className="label text-faint">Most chosen</span>
+                    {cta.current ? (
+                      <span className="pick-badge shrink-0">Your plan</span>
+                    ) : (
+                      plan.featured &&
+                      !visitor.planTier && (
+                        <span className="label text-faint">Most chosen</span>
+                      )
                     )}
                   </div>
 
@@ -187,9 +214,19 @@ export default async function Home() {
                     ))}
                   </ul>
 
-                  <a href="#contact" className="btn plan-cta mt-10 w-full">
-                    Choose {plan.label.toLowerCase()}
-                  </a>
+                  {/* Straight into checkout with this tier preselected.
+                      /subscribe is behind auth, so an anonymous visitor gets
+                      the login screen and lands back here after — one redirect
+                      rather than a mailto and a hope.
+
+                      Unless there is nothing to sell them. A member who has
+                      already paid, and staff who never pay at all, were being
+                      offered a second purchase of what they have; that reads
+                      as a broken site, and for a member it is a real risk of
+                      being charged twice. */}
+                  <Link href={cta.href} className="btn plan-cta mt-10 w-full">
+                    {cta.label}
+                  </Link>
                 </div>
               );
             })}

@@ -2,30 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  StartAudio,
-  TrackToggle,
-  VideoTrack,
-  useConnectionState,
-  useTracks,
-} from "@livekit/components-react";
-import { ConnectionState, Track } from "livekit-client";
+import LiveKitStage from "./livekit/LiveKitStage";
 
 /**
- * Class viewer (BUILD_PLAN 3.6).
+ * Class viewer (BUILD_PLAN 3.6) — the provider-agnostic half.
  *
- * One-to-many by construction: `useTracks` can only surface tracks that were
- * actually published, and the token route hands out `canPublish: false` to
- * everyone but the host — so there is no grid of viewer tiles to hide.
+ * Asks /api/live/token who this member is and whether they may join, then
+ * hands off to whichever stage the answer names. Everything here is about
+ * getting in: fetching the token, and turning a refusal into copy someone can
+ * act on. None of it changes if the video vendor does.
  *
- * Laid out for a phone propped against a wall mid-workout: video fills the
- * screen, controls sit in a bottom bar within thumb reach rather than in a
- * shrunk desktop toolbar.
+ * `provider` comes back with the token rather than being read from an env var
+ * on this side, so a swap is a server-side decision and a client that is
+ * mid-navigation during a deploy cannot mismatch the two.
  */
 
 interface TokenResponse {
+  provider: string;
   token: string;
   serverUrl: string;
   room: string;
@@ -43,12 +36,43 @@ const ERRORS: Record<string, { message: string; href?: string; label?: string }>
     unauthenticated: { message: "Your session expired. Log in again.", href: "/login", label: "Log in" },
     subscription_required: {
       message: "This class is for members. Pick a plan to join live sessions.",
-      href: "/#pricing",
+      href: "/subscribe",
       label: "See the plans",
+    },
+    not_in_group: {
+      message:
+        "This session is for a different group. Your own classes are on your dashboard.",
+      href: "/dashboard",
+      label: "My classes",
     },
     class_not_found: { message: "That class no longer exists." },
     class_closed: { message: "This class has finished." },
+    class_not_open: {
+      message: "This class hasn't opened yet. The room unlocks 20 minutes before it starts.",
+      href: "/dashboard",
+      label: "My classes",
+    },
   };
+
+/**
+ * "…opens at 6:40 am" beats "not yet". The server sends the moment rather than
+ * a formatted string so this reads in the viewer's own timezone — a member
+ * travelling is still told a time they can act on.
+ */
+function notOpenMessage(opensAtMs: unknown): string | null {
+  if (typeof opensAtMs !== "number" || !Number.isFinite(opensAtMs)) return null;
+
+  const opensAt = new Date(opensAtMs);
+  if (Number.isNaN(opensAt.getTime())) return null;
+
+  const time = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(opensAt);
+
+  return `This class hasn't opened yet. The room unlocks ${time}, 20 minutes before it starts.`;
+}
 
 export default function LiveRoom({ classId }: { classId: string }) {
   const [phase, setPhase] = useState<Phase>({ status: "loading" });
@@ -71,9 +95,14 @@ export default function LiveRoom({ classId }: { classId: string }) {
 
         if (!response.ok) {
           const known = ERRORS[body?.error as string];
+          const message =
+            body?.error === "class_not_open"
+              ? notOpenMessage(body?.opensAtMs)
+              : null;
+
           setPhase({
             status: "error",
-            message: known?.message ?? "Couldn't join this class.",
+            message: message ?? known?.message ?? "Couldn't join this class.",
             action:
               known?.href && known.label
                 ? { href: known.href, label: known.label }
@@ -124,103 +153,37 @@ export default function LiveRoom({ classId }: { classId: string }) {
     );
   }
 
-  const { token, serverUrl, role, classTitle } = phase.data;
+  const { provider, token, serverUrl, role, classTitle } = phase.data;
 
-  return (
-    <LiveKitRoom
-      token={token}
-      serverUrl={serverUrl}
-      connect
-      // Only the host opens a camera and mic. Viewers never get a permission
-      // prompt, which matters when someone is joining from a bedroom.
-      video={role === "host"}
-      audio={role === "host"}
-      className="flex min-h-dvh flex-col bg-inverse-bg"
-    >
-      {/* Renders every subscribed audio track. Without it the class is silent. */}
-      <RoomAudioRenderer />
-      <Stage title={classTitle} isHost={role === "host"} />
-    </LiveKitRoom>
-  );
-}
-
-function Stage({ title, isHost }: { title: string; isHost: boolean }) {
-  const connectionState = useConnectionState();
-  const tracks = useTracks(
-    [Track.Source.Camera, Track.Source.ScreenShare],
-    { onlySubscribed: false },
-  );
-
-  // Screen share wins when the trainer is demonstrating something on screen.
-  const stageTrack =
-    tracks.find((track) => track.source === Track.Source.ScreenShare) ??
-    tracks[0];
-
-  return (
-    <>
-      <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <p className="label text-[color:var(--inverse-fg)] opacity-60">
-            {connectionState === ConnectionState.Connected ? "Live" : "Connecting"}
-          </p>
-          <h1 className="display-sm mt-1 truncate text-lg text-[color:var(--inverse-fg)]">
-            {title}
-          </h1>
-        </div>
-
-        <Link
-          href="/dashboard"
-          className="btn shrink-0 border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-        >
-          Leave
-        </Link>
-      </header>
-
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-        {stageTrack ? (
-          <VideoTrack
-            trackRef={stageTrack}
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <p className="px-6 text-center text-[0.9375rem] text-[color:var(--inverse-fg)] opacity-70">
-            {isHost
-              ? "You're live. Your camera will appear here once it starts."
-              : "Waiting for your trainer to start the class…"}
-          </p>
-        )}
-
-        {/* Browsers block autoplaying audio until the user interacts. This
-            renders a prompt only when that block is actually in effect. */}
-        <StartAudio
-          label="Tap for sound"
-          className="btn btn-solid absolute bottom-4 left-1/2 -translate-x-1/2"
+  // One case today. A second provider is a second case here and a sibling of
+  // LiveKitStage — not an edit to it.
+  switch (provider) {
+    case "livekit":
+      return (
+        <LiveKitStage
+          token={token}
+          serverUrl={serverUrl}
+          role={role}
+          classTitle={classTitle}
         />
-      </div>
-
-      {isHost && (
-        <div className="flex items-center justify-center gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-          <TrackToggle
-            source={Track.Source.Microphone}
-            className="btn border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-          >
-            Mic
-          </TrackToggle>
-          <TrackToggle
-            source={Track.Source.Camera}
-            className="btn border border-[color:var(--inverse-fg)]/30 text-[color:var(--inverse-fg)]"
-          >
-            Camera
-          </TrackToggle>
-        </div>
-      )}
-    </>
-  );
+      );
+    default:
+      // Only reachable if the server is deployed ahead of the client — a stale
+      // tab during a provider switch. Say so rather than render nothing; a
+      // reload fixes it.
+      return (
+        <Centered>
+          <p className="max-w-sm text-center text-[0.9375rem] leading-relaxed text-muted">
+            This class needs a newer version of the app. Reload the page.
+          </p>
+        </Centered>
+      );
+  }
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-16">
+    <main id="main" className="flex min-h-dvh flex-col items-center justify-center px-5 py-16">
       {children}
     </main>
   );

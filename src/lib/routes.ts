@@ -6,7 +6,17 @@
  */
 
 /** Requires a signed-in user. Anonymous visitors get bounced to /login. */
-const AUTHED_PREFIXES = ["/dashboard", "/onboarding", "/live", "/admin"];
+const AUTHED_PREFIXES = [
+  "/dashboard",
+  "/onboarding",
+  "/live",
+  "/admin",
+  "/coach",
+  // Checkout needs an account for the membership to attach to, so an
+  // anonymous visitor is sent to log in and returned here afterwards rather
+  // than getting halfway through paying and then being asked who they are.
+  "/subscribe",
+];
 
 /** Auth entry points — pointless to show to someone already signed in. */
 const AUTH_ENTRY_PREFIXES = ["/login"];
@@ -30,9 +40,7 @@ export function isAuthEntryRoute(pathname: string): boolean {
  */
 export function loginUrlFor(pathname: string, search = ""): string {
   const target = `${pathname}${search}`;
-  if (!target.startsWith("/") || target.startsWith("//")) {
-    return "/login";
-  }
+  if (!isSameOriginPath(target)) return "/login";
   return `/login?next=${encodeURIComponent(target)}`;
 }
 
@@ -40,8 +48,27 @@ export function safeRedirectTarget(
   next: string | null | undefined,
   fallback = "/dashboard",
 ): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return fallback;
-  }
-  return next;
+  return isSameOriginPath(next) ? next : fallback;
+}
+
+/**
+ * Whether a string is a path on this site and nothing else.
+ *
+ * "starts with / and not //" is the obvious check and it is not enough.
+ * Browsers normalise a backslash to a forward slash in the authority
+ * position, so `/\evil.example` is fetched as `//evil.example` — a
+ * protocol-relative URL to somebody else's domain. Chrome, Safari and Firefox
+ * all do this. Control characters are stripped before parsing too, which
+ * turns `/<tab>/evil.example` into the same thing.
+ *
+ * So: no control characters at all, no backslashes at all, must start with a
+ * single slash. Nothing this app legitimately redirects to contains either.
+ */
+function isSameOriginPath(value: string | null | undefined): value is string {
+  if (!value) return false;
+
+  if (/[\u0000-\u001f\u007f]/.test(value)) return false;
+  if (value.includes("\\")) return false;
+
+  return value.startsWith("/") && !value.startsWith("//");
 }

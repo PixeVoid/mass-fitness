@@ -73,10 +73,44 @@ export const serverEnv = {
   get chatModel() {
     return process.env.CHAT_MODEL ?? "llama-3.3-70b-versatile";
   },
-  /** Open flag 3 in BUILD_PLAN — off unless explicitly switched on. */
-  get chatLogEnabled() {
-    return process.env.CHAT_LOG_ENABLED === "true";
+  /**
+   * Payments (Phase 3). "mock" walks the whole flow without credentials while
+   * the PhonePe merchant account is being registered — see lib/payments/mock.
+   */
+  get paymentProvider(): "phonepe" | "mock" {
+    return process.env.PAYMENT_PROVIDER === "mock" ? "mock" : "phonepe";
   },
+  get phonePeClientId() {
+    return required("PHONEPE_CLIENT_ID");
+  },
+  get phonePeClientSecret() {
+    return required("PHONEPE_CLIENT_SECRET");
+  },
+  get phonePeClientVersion() {
+    return process.env.PHONEPE_CLIENT_VERSION ?? "1";
+  },
+  /** Sandbox unless explicitly switched — never default to charging real cards. */
+  get phonePeEnvironment(): "sandbox" | "production" {
+    return process.env.PHONEPE_ENVIRONMENT === "production"
+      ? "production"
+      : "sandbox";
+  },
+  get phonePeWebhookUsername() {
+    return required("PHONEPE_WEBHOOK_USERNAME");
+  },
+  get phonePeWebhookPassword() {
+    return required("PHONEPE_WEBHOOK_PASSWORD");
+  },
+
+  /**
+   * Shared secret for /api/cron/*. Returns "" when unset, and the routes
+   * refuse rather than running open — an endpoint that emails every member is
+   * not something to leave unauthenticated by accident.
+   */
+  get cronSecret() {
+    return process.env.CRON_SECRET ?? "";
+  },
+
   /** Self-assessment result emails (Phase 5.5). Resend's free tier covers MVP volume. */
   get resendApiKey() {
     return required("RESEND_API_KEY");

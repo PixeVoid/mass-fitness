@@ -1,4 +1,4 @@
-import Link from "next/link";
+import SiteHeader, { HeaderSpacer } from "@/components/SiteHeader";
 
 export function LegalPage({
   eyebrow = "Legal",
@@ -12,39 +12,43 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
-      <Link href="/" className="link label mb-20 inline-flex items-center gap-2">
-        <span aria-hidden="true">&larr;</span>
-        Mass Fitness
-      </Link>
+    <>
+      {/* These are reached from the footer of the marketing site, so landing on
+          one with nothing but a back-link stranded the reader. The shared
+          header now carries the wordmark and the way back in. */}
+      <SiteHeader />
 
-      <p className="label text-faint">{eyebrow}</p>
-      <h1 className="display mt-6 text-[2.5rem] text-ink sm:text-[3.25rem]">
-        {title}
-      </h1>
-      <p className="label numeric mt-6 text-faint">{meta}</p>
+      <main id="main" className="mx-auto w-full max-w-3xl px-5 pb-20 sm:px-8 sm:pb-28">
+        <HeaderSpacer />
 
-      <div className="mt-20">{children}</div>
+        <p className="label text-faint">{eyebrow}</p>
+        <h1 className="display mt-6 text-[2.5rem] text-ink sm:text-[3.25rem]">
+          {title}
+        </h1>
+        <p className="label numeric mt-6 text-faint">{meta}</p>
 
-      <div className="mt-24 flex flex-col gap-4 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[0.9375rem] text-muted">
-          Questions? We&rsquo;re one message away.
-        </p>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <a href="mailto:fitnessbymass@gmail.com" className="link numeric text-sm">
-            fitnessbymass@gmail.com
-          </a>
-          <a
-            href="https://wa.me/916207524549"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="link text-sm"
-          >
-            WhatsApp
-          </a>
+        <div className="mt-20">{children}</div>
+
+        <div className="mt-24 flex flex-col gap-4 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[0.9375rem] text-muted">
+            Questions? We&rsquo;re one message away.
+          </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <a href="mailto:fitnessbymass@gmail.com" className="link numeric text-sm">
+              fitnessbymass@gmail.com
+            </a>
+            <a
+              href="https://wa.me/916207524549"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link text-sm"
+            >
+              WhatsApp
+            </a>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
 

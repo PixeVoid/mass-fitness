@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 import { requireAdmin } from "@/lib/auth/dal";
+import AdminTabs from "./AdminTabs";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -9,14 +10,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const TABS = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/members", label: "Members" },
-  { href: "/admin/classes", label: "Classes" },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/pricing", label: "Pricing" },
-];
 
 /**
  * The layout gate is a convenience, not the boundary. Layouts do not re-render
@@ -52,19 +45,9 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <nav aria-label="Admin sections" className="mt-6 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className="rounded-full px-4 py-2 text-[0.8125rem] text-muted transition-colors hover:bg-overlay hover:text-ink"
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </nav>
+      <AdminTabs />
 
-      <main className="mt-10">{children}</main>
+      <main id="main" className="mt-10">{children}</main>
     </div>
   );
 }

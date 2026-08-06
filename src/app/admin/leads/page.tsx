@@ -1,18 +1,28 @@
 import { listLeads } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/dal";
 import { formatClassTime } from "@/lib/classes";
+import { started } from "@/lib/promises";
+import { IconLabel } from "@/components/ui/Icon";
+import { glyphs } from "@/components/ui/glyphs";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLeadsPage() {
+  // The queries start before the auth check rather than after it. They run on
+  // the *user's* client, so RLS is what actually decides what comes back — an
+  // impostor gets empty results — and `requireAdmin()` still refuses the
+  // render below. Awaiting auth first simply spent two round trips before
+  // asking for anything, which is the whole of the tab-switch delay.
+  const leadsPromise = started(listLeads());
+
   await requireAdmin();
-  const leads = await listLeads();
+  const leads = await leadsPromise;
 
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="display-sm text-[1.75rem] text-ink">Leads</h1>
-        <p className="label text-faint">{leads.length} shown</p>
+        <IconLabel glyph={glyphs.leads}>{leads.length} shown</IconLabel>
       </div>
 
       <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-muted">

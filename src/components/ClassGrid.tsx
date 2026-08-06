@@ -43,14 +43,19 @@ const CLASSES = [
 /**
  * A schedule reads better as a list than as a grid of tiles: it lets the eye
  * run down one column of names and compare durations without re-scanning.
+ *
+ * `href` is passed in rather than hardcoded to "#pricing". These are the kinds
+ * of class we run, not tonight's timetable, so for a visitor with nothing to
+ * buy the honest destination is their own schedule — an admin tapping one and
+ * landing in checkout was the site forgetting it has signed-in users.
  */
-export default function ClassGrid() {
+export default function ClassGrid({ href = "#pricing" }: { href?: string }) {
   return (
     <ul className="mt-16 sm:mt-20">
       {CLASSES.map((item) => (
         <li key={item.name} data-reveal="">
           <a
-            href="#pricing"
+            href={href}
             className="group grid grid-cols-1 items-baseline gap-x-8 gap-y-4 border-t border-line py-8 transition-colors duration-500 hover:bg-overlay sm:py-10 lg:grid-cols-12"
           >
             <div className="flex items-center gap-4 self-center lg:col-span-4">

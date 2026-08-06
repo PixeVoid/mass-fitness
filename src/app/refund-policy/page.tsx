@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <LegalPage title="Refund Policy" meta="Last updated: January 2026 · Effective date: August 2025">
+    <LegalPage title="Refund Policy" meta="Last updated: August 2026 · Effective date: August 2025">
       <Callout>
         <strong className="text-ink">Important:</strong> At Mass Fitness, all sales are final and we do not offer refunds. By purchasing any programme, membership, or service, you acknowledge and agree to this policy.
       </Callout>
 
       <Section index="01" title="No cancellation">
         <p>
-          Once a programme is purchased and confirmed, it cannot be cancelled under any circumstances. This applies to Group Training, One-to-One Personalized Training, Squad Training, 90-Day Transformation Programmes, and any membership subscription.
+          Once a programme is purchased and confirmed, it cannot be cancelled under any circumstances. This applies to Group Training, One-to-One Personalised Training, 90-Day Transformation Programmes, and any membership subscription.
         </p>
       </Section>
 
@@ -40,13 +40,39 @@ export default function RefundPolicyPage() {
         </p>
       </Section>
 
-      <Section index="04" title="Programme commitment">
+      <Section index="04" title="How memberships end">
+        <p>
+          Memberships are paid once, up front, for the term you choose. <strong className="text-ink">Nothing renews automatically</strong> and no payment method is stored against your account by us — so there is no recurring charge to stop, and nothing to cancel. Your membership simply ends on its end date.
+        </p>
+        <p>
+          Live classes lock at that point. You keep your account, and you can start a new membership at any time.
+        </p>
+      </Section>
+
+      <Section index="05" title="Coming back">
+        <p>
+          If your membership ends and you subscribe again later, your account continues where it left off. We do not delete or reset anything when a term expires:
+        </p>
+        <List
+          items={[
+            "Your profile, name and fitness goals stay as they were",
+            "Your full membership history is kept, including every past term",
+            "Your self-assessment results stay on file",
+            "Conversations with the in-app assistant are kept for 12 months from when they happened, whether or not your membership is active",
+          ]}
+        />
+        <p>
+          You do not need a new account, and there is no rejoining fee. The only thing that changes is that live classes unlock again.
+        </p>
+      </Section>
+
+      <Section index="06" title="Programme commitment">
         <p>
           By enrolling, you are making a commitment to your fitness journey. Our trainers are committed to supporting your progress — we ask that you reciprocate with commitment.
         </p>
       </Section>
 
-      <Section index="05" title="Support in genuine difficulty">
+      <Section index="07" title="Support in genuine difficulty">
         <p>While cancellations and refunds aren&rsquo;t permitted, we may — entirely at our discretion — offer:</p>
         <List
           items={[
@@ -60,13 +86,13 @@ export default function RefundPolicyPage() {
         </p>
       </Section>
 
-      <Section index="06" title="Disputes">
+      <Section index="08" title="Disputes">
         <p>
           Please contact our support team before raising a dispute — we&rsquo;re committed to resolving issues through direct communication. Disputes are governed by the laws of India and subject to the jurisdiction of courts in India.
         </p>
       </Section>
 
-      <Section index="07" title="Contact">
+      <Section index="09" title="Contact">
         <List
           items={[
             "Email: fitnessbymass@gmail.com",

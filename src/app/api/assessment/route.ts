@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { getClientIp } from "@/lib/chat/stream";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimitDb } from "@/lib/rate-limit-db";
 import { normalisePhone } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scoreAssessment } from "@/lib/assessment/scoring";
@@ -27,7 +27,7 @@ import type { AssessmentAnswers } from "@/lib/assessment/types";
 export const dynamic = "force-dynamic";
 
 const RATE_LIMIT = 5;
-const RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_WINDOW_SECONDS = 10 * 60;
 
 const answersSchema = z.object({
   age: z.coerce.number().int().min(13).max(100),
@@ -62,9 +62,13 @@ const answersSchema = z.object({
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(100),
   phone: z.string().trim().min(1).max(20),
+  // Lowercased, like the auth schema. Without this a quiz taken as
+  // "Ankit@Gmail.com" never matches the profile stored as "ankit@gmail.com",
+  // and the coach silently never sees the assessment.
   email: z
     .string()
     .trim()
+    .toLowerCase()
     .max(200)
     .refine((v) => v === "" || z.string().email().safeParse(v).success, {
       message: "invalid email",
@@ -82,7 +86,10 @@ function json(body: unknown, status: number, headers?: HeadersInit) {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const limit = rateLimit(`assessment:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+  // Postgres-backed: this endpoint is anonymous and IP-keyed, which is exactly
+  // where a per-instance in-memory counter is weakest. The IP is hashed with a
+  // server-side salt and never stored.
+  const limit = await rateLimitDb("assessment", ip, RATE_LIMIT, RATE_WINDOW_SECONDS);
   if (!limit.allowed) {
     return json({ error: "rate_limited" }, 429, {
       "Retry-After": String(limit.retryAfter),

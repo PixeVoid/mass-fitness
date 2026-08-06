@@ -122,18 +122,35 @@ function bandForScore(total: number): ResultBand {
   return "Advanced";
 }
 
+/** One decimal, which is what the bars display. */
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 export function scoreAssessment(answers: AssessmentAnswers): AssessmentResult {
   const { score: bmiPoints, bmi } = bmiScore(answers.heightCm, answers.weightKg);
   const activity = activityScore(answers);
   const physical = physicalScore(answers);
   const lifestyle = lifestyleScore(answers);
 
-  const breakdown: ScoreBreakdown = { bmi: bmiPoints, activity, physical, lifestyle };
-
   // Physical performance skipped: rescale the other 75 points up to 100
   // rather than capping every score at 75 for anyone who skips it.
+  const skippedPhysical = physical === null;
+  const scale = skippedPhysical ? 100 / 75 : 1;
+
+  // The breakdown is scaled by the same factor as the total, because both are
+  // shown to the member — on the result screen and in the PDF, each bar reads
+  // "x / 25". Scaling only the headline left three bars summing to 63 under a
+  // score of 84, which reads as a broken calculator.
+  const breakdown: ScoreBreakdown = {
+    bmi: round1(bmiPoints * scale),
+    activity: round1(activity * scale),
+    physical: skippedPhysical ? null : physical,
+    lifestyle: round1(lifestyle * scale),
+  };
+
   const rawTotal = bmiPoints + activity + lifestyle + (physical ?? 0);
-  const total = Math.round(physical === null ? (rawTotal * 100) / 75 : rawTotal);
+  const total = Math.round(rawTotal * scale);
   const clamped = Math.min(100, Math.max(0, total));
 
   const band = bandForScore(clamped);
@@ -151,6 +168,7 @@ export function scoreAssessment(answers: AssessmentAnswers): AssessmentResult {
 
   return {
     total: clamped,
+    partMax: round1(25 * scale),
     band,
     bandCopy: BAND_COPY[band],
     breakdown,
