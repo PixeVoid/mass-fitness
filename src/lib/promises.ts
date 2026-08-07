@@ -11,10 +11,20 @@
  * as handled while leaving it untouched: awaiting it later still gets the
  * value, or still throws, exactly as before.
  */
-export function started<T>(promise: Promise<T>): Promise<T> {
+export function started<T>(work: PromiseLike<T>): Promise<T> {
+  // `Promise.resolve` rather than taking a `Promise` directly, because a
+  // Supabase query builder is a *thenable*, not a promise: it has `.then` but
+  // no `.catch`, and — the part that matters — it does not send the request
+  // until something subscribes to it. Assigning one to a variable and awaiting
+  // it later therefore starts nothing, which would make this helper appear to
+  // work while quietly doing the opposite of what it says. Resolving it here
+  // both normalises the type and is the subscription that kicks it off.
+  const promise = Promise.resolve(work);
+
   promise.catch(() => {
     // Deliberately empty. The real await, if it happens, sees the rejection;
     // this exists only so the runtime does not consider it unobserved.
   });
+
   return promise;
 }

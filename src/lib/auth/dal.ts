@@ -205,11 +205,6 @@ export const isAdmin = cache(async (): Promise<boolean> => {
   return profile?.role === "admin";
 });
 
-export const isCoach = cache(async (): Promise<boolean> => {
-  const profile = await getProfile();
-  return profile?.role === "trainer" || profile?.role === "admin";
-});
-
 /**
  * Gate for /coach — anyone who runs classes.
  *
@@ -283,6 +278,3 @@ export const getActiveSubscription = cache(
   },
 );
 
-export const hasActiveSubscription = cache(async (): Promise<boolean> => {
-  return (await getActiveSubscription()) !== null;
-});

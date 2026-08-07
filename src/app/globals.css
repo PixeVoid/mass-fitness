@@ -739,7 +739,7 @@ body {
   }
 
   .field[aria-invalid="true"] {
-    border-color: #d64545;
+    border-color: var(--danger);
   }
 
   .field-label {
@@ -751,7 +751,12 @@ body {
 
   .field-error {
     margin-top: 0.5rem;
-    color: #d64545;
+    /* Was a hardcoded #d64545, which failed WCAG AA on both papers — 4.05:1
+       in light, 4.41:1 in dark — and did not change between them at all. This
+       is the text a reader most needs to be able to read: it is the one
+       telling them why their form did not submit. The token is theme-aware
+       and already checked. */
+    color: var(--danger);
     font-size: 0.8125rem;
   }
 
