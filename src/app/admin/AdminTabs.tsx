@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import FastLink from "@/components/ui/FastLink";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/ui/Icon";
 import { glyphs } from "@/components/ui/glyphs";
@@ -40,7 +40,7 @@ export default function AdminTabs() {
             : pathname.startsWith(tab.href);
 
         return (
-          <Link
+          <FastLink
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
@@ -52,7 +52,7 @@ export default function AdminTabs() {
           >
             <Icon glyph={tab.glyph} size="sm" />
             {tab.label}
-          </Link>
+          </FastLink>
         );
       })}
     </nav>

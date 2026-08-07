@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { signOut } from "@/app/actions/auth";
+import SignOutButton from "@/components/auth/SignOutButton";
 import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
 import { glyphs } from "@/components/ui/glyphs";
 import { requireCoach } from "@/lib/auth/dal";
+import FastLink from "@/components/ui/FastLink";
 
 export const metadata: Metadata = {
   title: "Coach",
@@ -48,21 +48,16 @@ export default async function CoachLayout({
 
         <div className="flex items-center gap-3">
           {coach.role === "admin" && (
-            <Link href="/admin" className="btn btn-outline gap-2">
+            <FastLink href="/admin" className="btn btn-outline gap-2">
               <Icon glyph={glyphs.admin} size="sm" />
               Admin
-            </Link>
+            </FastLink>
           )}
-          <Link href="/dashboard" className="btn btn-outline gap-2">
+          <FastLink href="/dashboard" className="btn btn-outline gap-2">
             <Icon glyph={glyphs.dashboard} size="sm" />
             Dashboard
-          </Link>
-          <form action={signOut}>
-            <button type="submit" className="btn btn-outline gap-2">
-              <Icon glyph={glyphs.signOut} size="sm" />
-              Sign out
-            </button>
-          </form>
+          </FastLink>
+          <SignOutButton />
         </div>
       </header>
 
