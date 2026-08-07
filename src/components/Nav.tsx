@@ -200,59 +200,67 @@ export default function Nav({
 
       {/* Actions. The row is right-anchored, so a longer name grows the island
           leftwards on its own — the name only needs a ceiling so a very long
-          one cannot push into the links. */}
-      <div className="pointer-events-none relative flex flex-col items-end">
-      <div className={`${island} flex items-center gap-1 px-1.5`}>
-        <ThemeToggle className="h-7 w-7 sm:h-9 sm:w-9" />
+          one cannot push into the links.
 
-        <FastLink
-          href={accountHref}
-          onClick={() => setOpen(false)}
-          aria-current={onAccount ? "page" : undefined}
-          title={identity ? `${identity.firstName} — your dashboard` : undefined}
-          className={`flex h-7 items-center rounded-full px-3.5 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:h-9 sm:px-5 ${
-            onAccount
-              ? "nav-pill-active nav-pill-glow"
-              : "bg-inverse-bg text-inverse-fg nav-pill-glow"
-          }`}
-        >
-          {/* The clamp lives on an inner span: the active ring is drawn just
-              outside the pill, and an `overflow: hidden` on the pill itself
-              would crop it to a stripe along the top edge. */}
-          <span className="block max-w-[5.5rem] truncate sm:max-w-[9rem]">
-            {accountLabel}
-          </span>
-        </FastLink>
+          The wrapper exists only to anchor the caption below it, and must not
+          be taller than the island: the header centres its children, so a
+          wrapper taller than a pill centres a column instead and the actions
+          drift up out of line with the wordmark. */}
+      <div className="pointer-events-none relative">
+        <div className={`${island} flex items-center gap-1 px-1.5`}>
+          <ThemeToggle className="h-7 w-7 sm:h-9 sm:w-9" />
 
-        <button
-          type="button"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-overlay sm:h-9 sm:w-9 md:hidden"
-        >
-          <span aria-hidden="true" className="relative block h-3 w-4">
-            <span
-              className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
-                open ? "top-1.5 rotate-45" : "top-0.5"
-              }`}
-            />
-            <span
-              className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
-                open ? "top-1.5 -rotate-45" : "top-[0.625rem]"
-              }`}
-            />
-          </span>
-        </button>
-      </div>
+          <FastLink
+            href={accountHref}
+            onClick={() => setOpen(false)}
+            aria-current={onAccount ? "page" : undefined}
+            title={identity ? `${identity.firstName} — your dashboard` : undefined}
+            className={`flex h-7 items-center rounded-full px-3.5 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:h-9 sm:px-5 ${
+              onAccount
+                ? "nav-pill-active nav-pill-glow"
+                : "bg-inverse-bg text-inverse-fg nav-pill-glow"
+            }`}
+          >
+            {/* The clamp lives on an inner span: the active ring is drawn just
+                outside the pill, and an `overflow: hidden` on the pill itself
+                would crop it to a stripe along the top edge. */}
+            <span className="block max-w-[5.5rem] truncate sm:max-w-[9rem]">
+              {accountLabel}
+            </span>
+          </FastLink>
 
-      {/* Sits under the pill rather than inside it, so the island keeps its
-          shape and the caption can be dropped without reflowing anything. */}
-      {showHint && (
-        <p className="hint-fade pointer-events-none mt-1.5 mr-1 text-[0.6875rem] leading-none text-faint sm:hidden">
-          Tap your name for your dashboard
-        </p>
-      )}
+          <button
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-overlay sm:h-9 sm:w-9 md:hidden"
+          >
+            <span aria-hidden="true" className="relative block h-3 w-4">
+              <span
+                className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
+                  open ? "top-1.5 rotate-45" : "top-0.5"
+                }`}
+              />
+              <span
+                className={`absolute left-0 block h-px w-full bg-current transition-all duration-300 ${
+                  open ? "top-1.5 -rotate-45" : "top-[0.625rem]"
+                }`}
+              />
+            </span>
+          </button>
+        </div>
+
+        {/* Absolutely positioned, so it is genuinely out of flow. It was a
+            plain sibling before, and `visibility: hidden` at the end of the
+            fade does not reclaim the space — only `display: none` would — so
+            the caption went on nudging the header long after it stopped being
+            visible. */}
+        {showHint && (
+          <p className="hint-fade pointer-events-none absolute right-1 top-full mt-1.5 whitespace-nowrap text-[0.6875rem] leading-none text-faint sm:hidden">
+            Tap your name for your dashboard
+          </p>
+        )}
       </div>
 
       {/* Mobile sheet. Squared off rather than sharing the pills' `rounded-full`:
