@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import FaqForm from "./FaqForm";
 import { IconLabel } from "@/components/ui/Icon";
 import { glyphs } from "@/components/ui/glyphs";
+import { started } from "@/lib/promises";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,21 @@ export const dynamic = "force-dynamic";
  * filter here.
  */
 export default async function AdminFaqPage() {
-  await requireAdmin();
-
+  // Same shape as the other admin tabs: the query starts before the auth
+  // check rather than behind it. It runs on the user's client, so RLS decides
+  // what comes back and `requireAdmin()` still refuses the render — awaiting
+  // auth first just spent two round trips before asking for anything.
   const supabase = await createClient();
-  const { data: faqs } = await supabase
-    .from("faqs")
-    .select("*")
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
+  const faqsPromise = started(
+    supabase
+      .from("faqs")
+      .select("*")
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true }),
+  );
+
+  await requireAdmin();
+  const { data: faqs } = await faqsPromise;
 
   const categories = [...new Set((faqs ?? []).map((f) => f.category))];
 

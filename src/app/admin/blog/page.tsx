@@ -23,10 +23,15 @@ export default async function AdminBlogPage({
 }: {
   searchParams: Promise<{ edit?: string; new?: string; saved?: string }>;
 }) {
-  await requireAdmin();
+  // Same shape as the other admin tabs: the queries start before the auth
+  // check rather than behind it. They run on the user's client, so RLS decides
+  // what comes back and `requireAdmin()` still refuses the render — awaiting
+  // auth first just spent two round trips before asking for anything.
+  const adminPromise = requireAdmin();
   const { edit, new: isNew, saved } = await searchParams;
 
   const supabase = await createClient();
+  await adminPromise;
 
   if (isNew) {
     return (

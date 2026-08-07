@@ -75,7 +75,7 @@ function StatusButton({
       <input type="hidden" name="status" value={to} />
       <Submit label={label} variant={variant} />
       {state.error && (
-        <span role="alert" className="text-[0.8125rem] text-[#d64545]">
+        <span role="alert" className="text-[0.8125rem] text-danger">
           {state.error}
         </span>
       )}
