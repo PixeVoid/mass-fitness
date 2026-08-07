@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import FastLink from "@/components/ui/FastLink";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import { LogoMark } from "./Logo";
@@ -196,7 +197,7 @@ export default function Nav({
       <div className={`${island} flex items-center gap-1 p-1.5`}>
         <ThemeToggle />
 
-        <Link
+        <FastLink
           href={accountHref}
           onClick={() => setOpen(false)}
           aria-current={onAccount ? "page" : undefined}
@@ -213,7 +214,7 @@ export default function Nav({
           <span className="block max-w-[5.5rem] truncate sm:max-w-[9rem]">
             {accountLabel}
           </span>
-        </Link>
+        </FastLink>
 
         <button
           type="button"

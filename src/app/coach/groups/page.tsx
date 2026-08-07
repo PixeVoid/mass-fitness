@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { requireCoach } from "@/lib/auth/dal";
 import { getAssessmentsForMembers, recentJoins } from "@/lib/groups";
 import { formatClassTime } from "@/lib/classes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
 import { glyphs } from "@/components/ui/glyphs";
+import FastLink from "@/components/ui/FastLink";
 
 export const dynamic = "force-dynamic";
 
@@ -75,10 +75,10 @@ export default async function CoachGroupsPage() {
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="display-sm text-[1.75rem] text-ink">Your groups</h1>
-        <Link href="/coach" className="link label flex items-center gap-2">
+        <FastLink href="/coach" className="link label flex items-center gap-2">
           <Icon glyph={glyphs.schedule} size="sm" />
           Schedule &rarr;
-        </Link>
+        </FastLink>
       </div>
 
       {arrivals.length > 0 && (

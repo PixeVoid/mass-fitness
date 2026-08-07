@@ -9,7 +9,7 @@ import { glyphs } from "@/components/ui/glyphs";
 import { toIstLocalInput } from "@/lib/schedule";
 import ClassRow from "./ClassRow";
 import ScheduleForm from "./ScheduleForm";
-import Link from "next/link";
+import FastLink from "@/components/ui/FastLink";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +70,9 @@ export default async function CoachPage() {
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="display-sm text-[1.75rem] text-ink">Your schedule</h1>
-        <Link href="/coach/groups" className="link label">
+        <FastLink href="/coach/groups" className="link label">
           Your groups &rarr;
-        </Link>
+        </FastLink>
       </div>
       <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-muted">
         Anything you add here goes straight onto members&rsquo; dashboards and

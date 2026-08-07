@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { signOut } from "@/app/actions/auth";
+import SignOutButton from "@/components/auth/SignOutButton";
 import { requireAdmin } from "@/lib/auth/dal";
 import AdminTabs from "./AdminTabs";
 
@@ -37,11 +37,7 @@ export default async function AdminLayout({
           <Link href="/dashboard" className="btn btn-outline">
             Member view
           </Link>
-          <form action={signOut}>
-            <button type="submit" className="btn btn-outline">
-              Sign out
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </header>
 

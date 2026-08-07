@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { signOut } from "@/app/actions/auth";
+import SignOutButton from "@/components/auth/SignOutButton";
 import { getActiveSubscription, requireOnboardedProfile } from "@/lib/auth/dal";
 import NextClassBanner from "@/components/classes/NextClassBanner";
 import {
@@ -20,6 +19,7 @@ import { getPlan, getPricingCatalogue } from "@/lib/pricing";
 import Icon, { IconBadge, IconLabel } from "@/components/ui/Icon";
 import { glyphs } from "@/components/ui/glyphs";
 import { started } from "@/lib/promises";
+import FastLink from "@/components/ui/FastLink";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -133,23 +133,18 @@ export default async function DashboardPage({
 
         <div className="flex items-center gap-3">
           {profile.role === "admin" && (
-            <Link href="/admin" className="btn btn-outline btn-staff gap-2">
+            <FastLink href="/admin" className="btn btn-outline btn-staff gap-2">
               <Icon glyph={glyphs.admin} size="sm" />
               Admin
-            </Link>
+            </FastLink>
           )}
           {isStaff && (
-            <Link href="/coach" className="btn btn-outline btn-staff gap-2">
+            <FastLink href="/coach" className="btn btn-outline btn-staff gap-2">
               <Icon glyph={glyphs.schedule} size="sm" />
               Schedule
-            </Link>
+            </FastLink>
           )}
-          <form action={signOut}>
-            <button type="submit" className="btn btn-outline gap-2">
-              <Icon glyph={glyphs.signOut} size="sm" />
-              Sign out
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </div>
 
@@ -160,9 +155,9 @@ export default async function DashboardPage({
             Your membership is active, but you haven&rsquo;t picked a group yet
             — so there&rsquo;s nothing on your schedule. It takes a moment.
           </p>
-          <Link href="/subscribe/group" className="btn btn-solid mt-6">
+          <FastLink href="/subscribe/group" className="btn btn-solid mt-6">
             Pick your group
-          </Link>
+          </FastLink>
         </div>
       )}
 
@@ -213,9 +208,9 @@ export default async function DashboardPage({
               You don&apos;t have an active membership yet. Live classes stay
               locked until one is active.
             </p>
-            <Link href="/subscribe" className="btn btn-solid mt-6">
+            <FastLink href="/subscribe" className="btn btn-solid mt-6">
               See the plans
-            </Link>
+            </FastLink>
           </div>
         )}
       </section>
@@ -290,16 +285,16 @@ export default async function DashboardPage({
 
                   <div className="lg:col-span-3 lg:justify-self-end">
                     {locked ? (
-                      <Link href="/subscribe" className="btn btn-outline w-full sm:w-auto">
+                      <FastLink href="/subscribe" className="btn btn-outline w-full sm:w-auto">
                         Members only
-                      </Link>
+                      </FastLink>
                     ) : door === "open" ? (
-                      <Link
+                      <FastLink
                         href={`/live/${item.id}`}
                         className="btn btn-solid w-full sm:w-auto"
                       >
                         {isHost ? "Start class" : isStaff ? "Sit in" : "Join now"}
-                      </Link>
+                      </FastLink>
                     ) : (
                       <span className="label text-faint">
                         {door === "closed" ? "Ended" : "Not started"}

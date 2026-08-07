@@ -26,6 +26,7 @@ export default function ConfirmSubmit({
   body,
   confirmLabel,
   triggerClassName = "btn btn-quiet-danger",
+  tone = "danger",
 }: {
   /** Server action to run on confirm. */
   action: (formData: FormData) => void | Promise<void>;
@@ -37,6 +38,13 @@ export default function ConfirmSubmit({
   body: string;
   confirmLabel?: string;
   triggerClassName?: string;
+  /**
+   * Red is for what cannot be undone. Signing out is confirmable but not
+   * destructive — a red button there reads as an alarm about a thing the
+   * person deliberately reached for, and cheapens the colour where it does
+   * mean "gone forever".
+   */
+  tone?: "danger" | "neutral";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -61,7 +69,7 @@ export default function ConfirmSubmit({
         title={title}
         body={body}
       >
-        <ConfirmButton label={confirmLabel ?? label} />
+        <ConfirmButton label={confirmLabel ?? label} tone={tone} />
       </ConfirmDialog>
     </form>
   );
@@ -71,14 +79,22 @@ export default function ConfirmSubmit({
  * Separate so `useFormStatus` can read the enclosing form's pending state — it
  * only reports for a form the component is rendered inside.
  */
-function ConfirmButton({ label }: { label: string }) {
+function ConfirmButton({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "danger" | "neutral";
+}) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
       disabled={pending}
-      className="btn btn-danger disabled:opacity-60"
+      className={`btn disabled:opacity-60 ${
+        tone === "danger" ? "btn-danger" : "btn-solid"
+      }`}
     >
       {pending ? "Working…" : label}
     </button>
