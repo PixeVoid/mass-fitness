@@ -130,7 +130,15 @@ export default function Nav({
 
   const islandBase =
     "pointer-events-auto border border-line shadow-[var(--shadow-soft)] backdrop-blur-xl";
-  const island = `${islandBase} rounded-full bg-paper/75`;
+
+  // One explicit height for all three pills.
+  //
+  // They used to take their height from their contents, which meant the
+  // wordmark island was sized by a line of text and the actions island by a
+  // 36px icon button plus its padding — 40px against 48px on a phone, which
+  // reads as the right-hand pill being swollen. Anything that must line up
+  // should say so rather than arrive there by coincidence.
+  const island = `${islandBase} rounded-full bg-paper/75 h-10 sm:h-12`;
 
   // Signed in, the pill is the way into the account; signed out it is the way
   // in at all. Pointing it straight at /dashboard matters for more than
@@ -148,7 +156,7 @@ export default function Nav({
   return (
     <header className="pointer-events-none fixed inset-x-0 top-4 z-50 flex items-center justify-between gap-4 px-4 sm:top-6 sm:px-6 lg:px-8">
       {/* Wordmark */}
-      <div className={`${island} px-4 py-2 sm:px-5 sm:py-2.5`}>
+      <div className={`${island} flex items-center px-4 sm:px-5`}>
         <Link
           href="/"
           onClick={goHome}
@@ -165,7 +173,7 @@ export default function Nav({
       {/* Links */}
       <nav
         aria-label="Primary"
-        className={`${island} hidden items-center gap-1 p-1.5 md:flex`}
+        className={`${island} hidden items-center gap-1 px-1.5 md:flex`}
       >
         {LINKS.map((link) => {
           // Home carries the marker when no section does — at the top of the
@@ -178,7 +186,7 @@ export default function Nav({
               href={link.href}
               onClick={(e) => go(e, link.href)}
               aria-current={isActive ? "true" : undefined}
-              className={`rounded-full px-4 py-2 text-[0.8125rem] transition-colors duration-300 ${
+              className={`flex h-9 items-center rounded-full px-4 text-[0.8125rem] transition-colors duration-300 ${
                 isActive
                   ? "nav-pill-active"
                   : "text-muted hover:bg-overlay hover:text-ink"
@@ -194,15 +202,15 @@ export default function Nav({
           leftwards on its own — the name only needs a ceiling so a very long
           one cannot push into the links. */}
       <div className="pointer-events-none relative flex flex-col items-end">
-      <div className={`${island} flex items-center gap-1 p-1.5`}>
-        <ThemeToggle />
+      <div className={`${island} flex items-center gap-1 px-1.5`}>
+        <ThemeToggle className="h-7 w-7 sm:h-9 sm:w-9" />
 
         <FastLink
           href={accountHref}
           onClick={() => setOpen(false)}
           aria-current={onAccount ? "page" : undefined}
           title={identity ? `${identity.firstName} — your dashboard` : undefined}
-          className={`block rounded-full px-4 py-2 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:px-5 sm:py-2.5 ${
+          className={`flex h-7 items-center rounded-full px-3.5 text-[0.8125rem] font-medium transition-opacity duration-300 hover:opacity-80 sm:h-9 sm:px-5 ${
             onAccount
               ? "nav-pill-active nav-pill-glow"
               : "bg-inverse-bg text-inverse-fg nav-pill-glow"
@@ -221,7 +229,7 @@ export default function Nav({
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-overlay md:hidden"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-overlay sm:h-9 sm:w-9 md:hidden"
         >
           <span aria-hidden="true" className="relative block h-3 w-4">
             <span
@@ -254,7 +262,7 @@ export default function Nav({
           than the pills too, since it has body text behind it, not a hero. */}
       {open && (
         <div
-          className={`${islandBase} absolute inset-x-4 top-[4.5rem] flex flex-col rounded-3xl bg-paper/95 p-3 md:hidden`}
+          className={`${islandBase} absolute inset-x-4 top-16 flex flex-col rounded-3xl sm:top-[4.5rem] bg-paper/95 p-3 md:hidden`}
         >
           {LINKS.map((link) => (
             <Link

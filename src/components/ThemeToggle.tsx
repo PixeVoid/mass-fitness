@@ -46,7 +46,11 @@ function getSnapshot(): Theme {
 // this, and CSS corrects the icon before paint either way.
 const getServerSnapshot = (): Theme => "light";
 
-export default function ThemeToggle({ className = "" }: { className?: string }) {
+export default function ThemeToggle({
+  className = "h-9 w-9",
+}: {
+  className?: string;
+}) {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const toggle = () => {
@@ -64,7 +68,11 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       type="button"
       onClick={toggle}
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-      className={`flex h-9 w-9 items-center justify-center rounded-full text-ink transition-colors duration-300 hover:bg-overlay ${className}`}
+      // No default size: Tailwind resolves conflicts by stylesheet order, not
+      // by the order classes appear in the string, so a caller passing `h-7`
+      // after a built-in `h-9` may or may not win. The size comes from the
+      // caller, and the one place it is used says what it wants.
+      className={`flex items-center justify-center rounded-full text-ink transition-colors duration-300 hover:bg-overlay ${className}`}
     >
       <svg
         width="17"
